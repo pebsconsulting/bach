@@ -1,2 +1,5 @@
+# Test with comments and string literals
 "ab\"c"
-
+'de\'f'
+"xy'z"
+[12"3"4]

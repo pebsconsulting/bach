@@ -23,6 +23,7 @@
 
 from enum import Enum, unique
 from itertools import tee, zip_longest
+from functools import reduce
 
 class BachError(Exception): pass
 class BachRuntimeError(BachError): pass
@@ -53,95 +54,167 @@ def streamToGenerator(stream):
 
 
 @unique
-class ParserSymbol(Enum): # see syntax.txt for state meanings
+class ProductionSymbol(Enum):
     S      =  0 # Start
     IWS    =  1 # "inline" whitespace - whitespace excluding \n
     LF     =  2 # Linefeed
     C      =  3 # Comment
-    LSQ    =  4 # 'Single'-Quoted String Literal Remainder
-    LDQ    =  5 # "Double"-Quoted String Literal Remainder
-    LBQ    =  6 # [Bracket]-Quoted String Literal Remainder
-    LSQESC =  7 # Escape Sequence within Single-Quoted String Literal Remainder
-    LDQESC =  8 # Escape Sequence within Double-Quoted String Literal Remainder
-    LBQESC =  9 # Escape Sequence within Bracket-Quoted String Literal Remainder
+    LSQ    =  4 # 'Single'-Quoted String Literal Remainder (excudes opening quote)
+    LDQ    =  5 # "Double"-Quoted String Literal Remainder (excudes opening quote)
+    LBQ    =  6 # [Bracket]-Quoted String Literal Remainder (excudes opening quote)
+    LSQESC =  7 # Escape Sequence within 'Single'-Quoted String Literal Remainder
+    LDQESC =  8 # Escape Sequence within "Double"-Quoted String Literal Remainder
+    LBQESC =  9 # Escape Sequence within [Bracket]-Quoted String Literal Remainder
     
+    @staticmethod
+    def fromString(s):
+        return ProductionSymbol[s]
 
 
 
 
-class TerminalSet:
+class TerminalSet():
     @staticmethod
     def contains(collection, element):
-        if element is None:                 return False
-        if collection is TerminalSet.All:   return True
-        if collection is TerminalSet.Empty: return False
+        if element is None: return False
+        if collection is True: return True  # All
+        if collection == '': return False # Empty
         return element in collection
 
-    # All - special set of all valid characters
-    All   = 1
-    # Empty - special set of no characters
-    Empty = 2
-    # iws - "inline whitespace" - whitespace excluding \n
-    iws = '\t\r '
-    # ws - whitespace
-    ws  = '\t\r\n '
-    # lf - linefeed
-    lf  = '\n'
-    # bs - backslash
-    bs = '\\'
-    # ss -  Shorthand Seperator
-    ss  = '#.*^?!@|~$'
-    # sc -  Special Character
-    sc  = '#.*^?!@|~$=\t\r\n ()[]{}<>"\'\\/'
-    # oqt - Opening Quote
-    oqt = '"\'[{<)'
+    sets = {
+        # All - special set of all valid characters
+        'All': True,
+        # Empty - special set of no characters
+        'Empty': '',
+        # iws - "inline whitespace" - whitespace excluding \n
+        'iws': '\t\r ',
+        # ws - whitespace
+        'ws': '\t\r\n ',
+        # lf - linefeed
+        'lf': '\n',
+        # bs - backslash
+        'bs': '\\',
+        # ss -  Shorthand Seperator
+        'ss': '#.*^?!@|~$',
+        # sc -  Special Character
+        'sc': '#.*^?!@|~$=\t\r\n ()[]{}<>"\'\\/',
+        # oqt - Opening Quote
+        'oqt': '"\'[{<)'
+    }
+    
+    @staticmethod
+    def fromString(s):
+        return TerminalSet.sets.get(s)
 
 
-class ParserRules:
-    # production symbol,
-    # current character in set,
-    # current character not in set,
-    # lookahead in set,
-    # lookahead not in set,
-    # rest of rule (array)
-    rules = [\
-        # S => iws LF S
-        (ParserSymbol.S,      TerminalSet.iws, TerminalSet.Empty, TerminalSet.lf,  TerminalSet.Empty, [ParserSymbol.LF, ParserSymbol.S]),
-        # S => iws IWS LF S
-        (ParserSymbol.S,      TerminalSet.iws, TerminalSet.Empty, TerminalSet.All, TerminalSet.lf,    [ParserSymbol.IWS, ParserSymbol.LF, ParserSymbol.S]),
-        # IWS => iws
-        (ParserSymbol.IWS,    TerminalSet.iws, TerminalSet.Empty, TerminalSet.All, TerminalSet.iws,   []),
-        # IWS => iws IWS
-        (ParserSymbol.IWS,    TerminalSet.iws, TerminalSet.Empty, TerminalSet.iws, TerminalSet.Empty, [ParserSymbol.IWS]),
-        # S => lf S
-        (ParserSymbol.S,      TerminalSet.lf,  TerminalSet.Empty, TerminalSet.All, TerminalSet.Empty, [ParserSymbol.S]),
-        # LF => lf
-        (ParserSymbol.LF,     TerminalSet.lf,  TerminalSet.Empty, TerminalSet.All, TerminalSet.Empty, []),
-        # S => # C LF S
-        (ParserSymbol.S,      ('#'),           TerminalSet.Empty, TerminalSet.All, TerminalSet.lf,    [ParserSymbol.C, ParserSymbol.LF, ParserSymbol.S]),
-        # S => # LF S
-        (ParserSymbol.S,      ('#'),           TerminalSet.Empty, TerminalSet.lf,  TerminalSet.Empty, [ParserSymbol.LF, ParserSymbol.S]),
-        # C => ~lf
-        (ParserSymbol.C,      TerminalSet.All, TerminalSet.lf,    TerminalSet.lf,  TerminalSet.Empty, []),
-        # C => ~lf C
-        (ParserSymbol.C,      TerminalSet.All, TerminalSet.lf,    TerminalSet.All, TerminalSet.lf,    [ParserSymbol.C]),
+@unique
+class ParserRuleFlag(Enum):
+    captureStart = 1
+    captureEnd   = 2
+    capture      = 3
+    
+    @staticmethod
+    def fromString(s):
+        if not s: return 0
+        return ParserRuleFlag[s]
+
+
+
+def resolveParserRules(rules):
+    def resolveTerminalSet(s):
+        if s and (s[0] == 'ϵ'):
+            return TerminalSet.fromString(s[1:])
+        return s
+    
+    for i in range(len(rules)):
+        productionSymbol, currentCharIn, currentCharNotIn, lookaheadIn, \
+        lookaheadNotIn, restOfRule, ruleFlags = rules[i]
         
-        # S   => " LDQ
-        (ParserSymbol.S,      ('"'),           TerminalSet.Empty, TerminalSet.All, TerminalSet.Empty, [ParserSymbol.LDQ, ParserSymbol.S]),
-        # LDQ  => "
-        (ParserSymbol.LDQ,    ('"'),           TerminalSet.Empty, TerminalSet.All, TerminalSet.Empty, []),
-        # LDQ => ¬bs~" LDQ
-        (ParserSymbol.LDQ,    TerminalSet.All, ('\\', '"'),       TerminalSet.All, TerminalSet.Empty, [ParserSymbol.LDQ]),
-        # LDQ  => bs LDQESC LDQ
-        (ParserSymbol.LDQ,    TerminalSet.bs,  TerminalSet.Empty, TerminalSet.All, TerminalSet.Empty, [ParserSymbol.LDQESC, ParserSymbol.LDQ]),
-        # LDQESC => bs | cdq
-        (ParserSymbol.LDQESC, ('\\', '"'),     TerminalSet.Empty, TerminalSet.All, TerminalSet.Empty, []),
+        productionSymbol = ProductionSymbol.fromString(productionSymbol)
+        currentCharIn    = resolveTerminalSet(currentCharIn)
+        currentCharNotIn = resolveTerminalSet(currentCharNotIn)
+        lookaheadIn      = resolveTerminalSet(lookaheadIn)
+        lookaheadNotIn   = resolveTerminalSet(lookaheadNotIn)
+        restOfRule       = list(map(ProductionSymbol.fromString, restOfRule))
+        ruleFlags        = list(map(ParserRuleFlag.fromString, ruleFlags))
         
-        # ??? for rules with a common prefix, have an extra tuple element,
-        # that makes a list of rules that can apply only at that stage
-        # ??? for rules that capture, have an extra tuple flags element
-        # ??? compact and preprocess the rules (e.g. reverse in advance)
-    ]
+        rules[i] = (productionSymbol, currentCharIn, currentCharNotIn, \
+            lookaheadIn, lookaheadNotIn, restOfRule, ruleFlags)
+    
+    return rules
+
+
+
+ProductionRules = resolveParserRules([\
+    # Each rule is a tuple:    
+    # - production symbol,
+    # - current character in TerminalSet?
+    # - current character not in TerminalSet?
+    # - lookahead in TerminalSet?
+    # - lookahead not in TerminalSet?
+    # - rest of rule (array of ProductionSymbols),
+    # - ParserRuleFlags (add together)
+    
+    # Use 'A' for ProductionSymbol.A
+    # Use 'ϵname' for a named TerminalSet.name, 'abc' for the literals a|b|c
+    # Use 'name' for ParserRuleFlag.name
+    # Use 'name1+name2' for ParserRuleFlag.name1 + ParserRuleFlag.name2
+
+    # --- Rules for initial whitespace and comments at head of document
+    
+    # S => iws LF S
+    ('S',      'ϵiws', 'ϵEmpty', 'ϵlf',  'ϵEmpty', ['LF', 'S'],             []),
+    # S => iws IWS LF S
+    ('S',      'ϵiws', 'ϵEmpty', 'ϵAll', 'ϵlf',    ['IWS', 'LF', 'S'],      []),
+    # IWS => iws
+    ('IWS',    'ϵiws', 'ϵEmpty', 'ϵAll', 'ϵiws',   [],                      []),
+    # IWS => iws IWS
+    ('IWS',    'ϵiws', 'ϵEmpty', 'ϵiws', 'ϵEmpty', ['IWS'],                 []),
+    # S => lf S
+    ('S',      'ϵlf',  'ϵEmpty', 'ϵAll', 'ϵEmpty', ['S'],                   []),
+    # LF => lf
+    ('LF',     'ϵlf',  'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      []),
+    # S => # C LF S
+    ('S',      '#',    'ϵEmpty', 'ϵAll', 'ϵlf',    ['C', 'LF', 'S'],        []),
+    # S => # LF S
+    ('S',      '#',    'ϵEmpty', 'ϵlf',  'ϵEmpty', ['LF', 'S'],             []),
+    # C => ~lf
+    ('C',      'ϵAll', 'ϵlf',    'ϵlf',  'ϵEmpty', [],                      []),
+    # C => ~lf C
+    ('C',      'ϵAll', 'ϵlf',    'ϵAll', 'ϵlf',    ['C'],                   []),
+    
+    # Rules for 'Single'/"Double"/[bracket]-quoted literals
+    
+    # S   => " LDQ
+    ('S',      '\'',   'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LSQ', 'S'],            ['captureStart']),
+    ('S',      '"',    'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LDQ', 'S'],            ['captureStart']),
+    ('S',      '[',    'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LBQ', 'S'],            ['captureStart']),
+    # LDQ  => "
+    ('LSQ',    '\'',   'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['captureEnd']),
+    ('LDQ',    '"',    'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['captureEnd']),
+    ('LBQ',    ']',    'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['captureEnd']),
+    # LDQ => ¬bs~" LDQ
+    ('LSQ',    'ϵAll', '\\\'',   'ϵAll', 'ϵEmpty', ['LSQ'],                 ['capture']),
+    ('LDQ',    'ϵAll', '\\"',    'ϵAll', 'ϵEmpty', ['LDQ'],                 ['capture']),
+    ('LBQ',    'ϵAll', '\\]',    'ϵAll', 'ϵEmpty', ['LBQ'],                 ['capture']),
+    # LDQ  => bs LDQESC LDQ
+    ('LSQ',    'ϵbs',  'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LSQESC', 'LSQ'],       []),
+    ('LDQ',    'ϵbs',  'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LDQESC', 'LDQ'],       []),
+    ('LBQ',    'ϵbs',  'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LBQESC', 'LBQ'],       []),
+    # LDQESC => bs | cdq
+    ('LSQESC', '\\\'', 'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['capture']),
+    ('LDQESC', '\\"',  'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['capture']),
+    ('LBQESC', '\\]',  'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['capture']),
+    
+    # ??? for rules with a common prefix, have an extra tuple element,
+    # that makes a list of rules that can apply only at that stage
+    # ??? for rules that capture, have an extra tuple flags element
+    # ??? compact and preprocess the rules (e.g. reverse in advance)
+])
+
+for i in ProductionRules:
+    print(i)
+
 
 
 class ParserState:
@@ -150,7 +223,7 @@ class ParserState:
         # 1. the current production symbol
         # 2. the rule chosen
         # 3. how much of the rule we've done
-        self.stack = [(ParserSymbol.S, 0, 0)]
+        self.stack = [(ProductionSymbol.S, 0, 0)]
     
     def top(self):
         return self.stack[-1]
@@ -208,9 +281,9 @@ def parse(stream):
         symbol, rule, position = top
         print("symbol=%s, current=%s, lookahead=%s, pos=%s, d %d" % (repr(symbol), repr(current), repr(lookahead), pos, len(state.stack)))
     
-        for rule in ParserRules.rules:
+        for rule in ProductionRules:
             ruleSymbol, ruleCurrentIn, ruleCurrentNotIn, ruleLookaheadIn, \
-            ruleLookaheadNotIn, restOfRule = rule
+            ruleLookaheadNotIn, restOfRule, ruleFlags = rule
             
             if  (symbol == ruleSymbol) and \
                 (TerminalSet.contains(ruleCurrentIn, current)) and \
@@ -219,6 +292,14 @@ def parse(stream):
                 (not TerminalSet.contains(ruleLookaheadNotIn, lookahead)):
 
                 match = rule
+                
+                if ruleFlags:
+                    if ParserRuleFlag.captureStart in ruleFlags:
+                        capture = []
+                    if ParserRuleFlag.captureEnd in ruleFlags:
+                        print("capture: "+''.join(capture))
+                    if ParserRuleFlag.capture in ruleFlags:
+                        capture.append(current)
                 
                 state.pop()
                 
@@ -229,9 +310,7 @@ def parse(stream):
                 continue # NOTE could check no other rules match
         
         if match is None:
-            #state.pop()
-            #break
-            if symbol is not ParserSymbol.S:
+            if symbol is not ProductionSymbol.S:
                 print("Syntax Error")
             return
         
