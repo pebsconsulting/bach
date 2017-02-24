@@ -30,7 +30,7 @@ class BachRuntimeError(BachError): pass
 class BachSyntaxError(BachRuntimeError):
     def __init__(self, message,  pos):
         line, col, offset = pos
-        super().__init__("%s at line %d column %d (abs %d)" % \
+        super().__init__("%s at line %d column %d (character %d)" % \
             (message, line, col, offset))
         self.lineno = line
         self.column = col
@@ -49,7 +49,7 @@ def streamToGenerator(stream):
     """Lazily read a character from a stream at a time"""
     while True:
         c = stream.read(1)
-        if not c: raise StopIteration # EOF
+        if not c: break # EOF
         yield c
 
 
@@ -57,54 +57,61 @@ def streamToGenerator(stream):
 class ProductionSymbol(Enum):
     S      =  0 # Start
     IWS    =  1 # "inline" whitespace - whitespace excluding \n
-    LF     =  2 # Linefeed
-    C      =  3 # Comment
-    LSQ    =  4 # 'Single'-Quoted String Literal Remainder (excudes opening quote)
-    LDQ    =  5 # "Double"-Quoted String Literal Remainder (excudes opening quote)
-    LBQ    =  6 # [Bracket]-Quoted String Literal Remainder (excudes opening quote)
-    LSQESC =  7 # Escape Sequence within 'Single'-Quoted String Literal Remainder
-    LDQESC =  8 # Escape Sequence within "Double"-Quoted String Literal Remainder
-    LBQESC =  9 # Escape Sequence within [Bracket]-Quoted String Literal Remainder
+    WS     =  2 # whitespace
+    LF     =  3 # Linefeed
+    C      =  4 # Comment
+    LSQ    =  5 # 'Single'-Quoted String Literal Remainder (excudes opening quote)
+    LDQ    =  6 # "Double"-Quoted String Literal Remainder (excudes opening quote)
+    LBQ    =  7 # [Bracket]-Quoted String Literal Remainder (excudes opening quote)
+    LSQESC =  8 # Escape Sequence within 'Single'-Quoted String Literal Remainder
+    LDQESC =  9 # Escape Sequence within "Double"-Quoted String Literal Remainder
+    LBQESC = 10 # Escape Sequence within [Bracket]-Quoted String Literal Remainder
+    D      = 11 # Document (i.e. past any header comments)
+    LD     = 12 # Literal followed by rest of D
+    ALD    = 13 # Assignment followed by LD
+    XSCC   = 14 # Excluding Special Characters Capture
     
     @staticmethod
     def fromString(s):
         return ProductionSymbol[s]
 
-
+@unique
+class CaptureSemantic(Enum):
+    label      = 1 # Function or Label
+    attribute  = 2 # Attribute
+    literal    = 3 # Literal
+    
+    @staticmethod
+    def fromString(s):
+        return CaptureSemantic[s]
 
 
 class TerminalSet():
+    All   = True         # special set of all valid chars - excl. empty string
+    Empty = ''           # empty set - does not include empty string
+    Eof   = None         # special set of only the empty / null string
+    iws   = '\t\r '      # "inline" whitespace - whitespace excluding \n
+    ws    = '\t\r\n '    # whitespace
+    lf    = '\n'         # linefeed
+    bs    = '\\'         # backslash
+    ss    = '#.*^?!@|~$' # "shorthand separator"
+    sc    = '#.*^?!@|~$=:\t\r\n ()[]{}<>"\'\\/' # special character
+    oqt   = '"\'['       # opening quote
+    asgn  = '=:'         # assignment characters
+    
     @staticmethod
     def contains(collection, element):
+        if collection is None:
+            return True if element is None else False # Eof
+        
         if element is None: return False
         if collection is True: return True  # All
         if collection == '': return False # Empty
         return element in collection
-
-    sets = {
-        # All - special set of all valid characters
-        'All': True,
-        # Empty - special set of no characters
-        'Empty': '',
-        # iws - "inline whitespace" - whitespace excluding \n
-        'iws': '\t\r ',
-        # ws - whitespace
-        'ws': '\t\r\n ',
-        # lf - linefeed
-        'lf': '\n',
-        # bs - backslash
-        'bs': '\\',
-        # ss -  Shorthand Seperator
-        'ss': '#.*^?!@|~$',
-        # sc -  Special Character
-        'sc': '#.*^?!@|~$=\t\r\n ()[]{}<>"\'\\/',
-        # oqt - Opening Quote
-        'oqt': '"\'[{<)'
-    }
     
     @staticmethod
     def fromString(s):
-        return TerminalSet.sets.get(s)
+        return getattr(TerminalSet, s)
 
 
 @unique
@@ -138,6 +145,9 @@ def resolveParserRules(rules):
         restOfRule       = list(map(ProductionSymbol.fromString, restOfRule))
         ruleFlags        = list(map(ParserRuleFlag.fromString, ruleFlags))
         
+        # rules are pushed on the stack in reverse order
+        restOfRule       = list(reversed(restOfRule))
+        
         rules[i] = (productionSymbol, currentCharIn, currentCharNotIn, \
             lookaheadIn, lookaheadNotIn, restOfRule, ruleFlags)
     
@@ -146,19 +156,29 @@ def resolveParserRules(rules):
 
 
 ProductionRules = resolveParserRules([\
-    # Each rule is a tuple:    
+    # These rules are very thorough because we are able to efficiently enforce
+    # much of the semantics at the level of the language grammar itself.
+    # All production rules are given in Greibach Normal Form, with one
+    # character of lookahead to resolve ambiguities, i.e. LL(1).
+
+    # Each rule is a tuple:
     # - production symbol,
     # - current character in TerminalSet?
     # - current character not in TerminalSet?
     # - lookahead in TerminalSet?
     # - lookahead not in TerminalSet?
-    # - rest of rule (array of ProductionSymbols),
-    # - ParserRuleFlags (add together)
+    # - rest of rule (list of ProductionSymbols),
+    # - flags (list of ParserRuleFlags)
+    # - capture semantic
+    
+    # TODO - we only use one of either the InSet or NotInSet at any time
+    # -- combine this into a single field with ϵ/∉.
     
     # Use 'A' for ProductionSymbol.A
     # Use 'ϵname' for a named TerminalSet.name, 'abc' for the literals a|b|c
-    # Use 'name' for ParserRuleFlag.name
-    # Use 'name1+name2' for ParserRuleFlag.name1 + ParserRuleFlag.name2
+    # Use 'name' for a ParserRuleFlag.name
+    # Use 'name' for CaptureSemantic.name
+
 
     # --- Rules for initial whitespace and comments at head of document
     
@@ -178,17 +198,79 @@ ProductionRules = resolveParserRules([\
     ('S',      '#',    'ϵEmpty', 'ϵAll', 'ϵlf',    ['C', 'LF', 'S'],        []),
     # S => # LF S
     ('S',      '#',    'ϵEmpty', 'ϵlf',  'ϵEmpty', ['LF', 'S'],             []),
-    # C => ~lf
+    # C => ¬lf
     ('C',      'ϵAll', 'ϵlf',    'ϵlf',  'ϵEmpty', [],                      []),
-    # C => ~lf C
+    # C => ¬lf C
     ('C',      'ϵAll', 'ϵlf',    'ϵAll', 'ϵlf',    ['C'],                   []),
     
-    # Rules for 'Single'/"Double"/[bracket]-quoted literals
     
-    # S   => " LDQ
-    ('S',      '\'',   'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LSQ', 'S'],            ['captureStart']),
-    ('S',      '"',    'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LDQ', 'S'],            ['captureStart']),
-    ('S',      '[',    'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LBQ', 'S'],            ['captureStart']),
+    # --- Rules for strings of "one or more" in a certain character set
+    
+    # WS => ws
+    ('WS',     'ϵws',  'ϵEmpty', 'ϵAll', 'ϵws',    [],                      []),
+    # WC => ws WS
+    ('WS',     'ϵws',  'ϵEmpty', 'ϵws',  'ϵEmpty', [],                      []),
+    
+    # XSCC => ¬sc
+    ('XSCC',  'ϵAll', 'ϵsc',    'ϵsc',  'ϵEmpty', [],                      ['captureEnd', 'capture']),
+    # XSCC => ¬sc XSCC
+    ('XSCC',  'ϵAll', 'ϵsc',    'ϵAll', 'ϵsc',    ['XSCC'],                ['captureEnd', 'capture']),
+    
+    
+    # --- Start of document, a function/label identifier on the first line
+    
+    # S => ¬sc WS D
+    ('S',      'ϵAll', 'ϵsc',    'ϵws',  'ϵEmpty', ['WS', 'D'],             ['captureStart', 'captureEnd', 'capture']),
+    # S => ¬sc XSCC D
+    ('S',      'ϵAll', 'ϵsc',    'ϵAll', 'ϵsc',    ['XSCC','D'],            ['captureStart', 'capture']),
+    
+    
+    # --- Document may contain arbitrary whitespace
+    
+    # D => ws D
+    ('D',     'ϵws',  'ϵEmpty', 'ϵAll', 'ϵws',    ['D'],                   []),
+    # D => ws WS D
+    ('D',     'ϵws',  'ϵEmpty', 'ϵws',  'ϵEmpty', ['WS', 'D'],             []),
+    # D => ws, lookahead EOF - special case of end of document
+    ('D',     'ϵws',  'ϵEmpty', 'ϵEof', 'ϵEmpty', [], []),
+    
+    
+    # --- Attributes - standalone
+    # (may be the start of a pair, but that can't yet be detected)
+    
+    # D => ¬sc WS D
+    ('D',      'ϵAll', 'ϵsc',    'ϵws',  'ϵEmpty', ['WS', 'D'],            ['captureStart', 'captureEnd', 'capture']),
+    # D => ¬sc XSCC D
+    ('D',      'ϵAll', 'ϵsc',    'ϵAll', 'ϵsc',    ['XSCC','D'],           ['captureStart', 'capture']),
+    
+    
+    # --- Attributes - pair start / pair second half
+    
+    # D => ¬sc asgn LD
+    ('D',      'ϵAll', 'ϵsc',    'ϵasgn','ϵEmpty', ['ALD'],                ['captureStart', 'captureEnd', 'capture']),
+    # D => assgn LD
+    ('D',      'ϵasgn', 'ϵEmpty','ϵAll', 'ϵEmpty', ['LD'],                 ['captureStart', 'captureEnd', 'capture']),
+    # ALD => assign LD
+    ('ALD',    'ϵasgn', 'ϵEmpty','ϵAll', 'ϵEmpty', ['LD'],                 []),
+    
+    
+    # --- Attribute pair whitespace
+    # LD => ws LD
+    ('LD',    'ϵws',  'ϵEmpty', 'ϵAll', 'ϵws',    ['LD'],                  []),
+    # LD => ws WS LD
+    ('LD',    'ϵws',  'ϵEmpty', 'ϵws',  'ϵEmpty', ['WS', 'LD'],            []),
+    
+    
+    
+    # Rules for 'Single'/"Double"/[bracket]-quoted literals and escapes
+    
+    # D   => " LDQ D
+    ('D',      '\'',   'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LSQ', 'D'],            ['captureStart']),
+    ('D',      '"',    'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LDQ', 'D'],            ['captureStart']),
+    ('D',      '[',    'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LBQ', 'D'],            ['captureStart']),
+    ('LD',     '\'',   'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LSQ', 'D'],            ['captureStart']),
+    ('LD',     '"',    'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LDQ', 'D'],            ['captureStart']),
+    ('LD',     '[',    'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LBQ', 'D'],            ['captureStart']),
     # LDQ  => "
     ('LSQ',    '\'',   'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['captureEnd']),
     ('LDQ',    '"',    'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['captureEnd']),
@@ -206,10 +288,7 @@ ProductionRules = resolveParserRules([\
     ('LDQESC', '\\"',  'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['capture']),
     ('LBQESC', '\\]',  'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['capture']),
     
-    # ??? for rules with a common prefix, have an extra tuple element,
-    # that makes a list of rules that can apply only at that stage
-    # ??? for rules that capture, have an extra tuple flags element
-    # ??? compact and preprocess the rules (e.g. reverse in advance)
+
 ])
 
 for i in ProductionRules:
@@ -255,7 +334,7 @@ def setpos(currentPos, currentChar):
     col = col + 1
     if (currentChar == '\n'):
         line = line + 1
-        col = 1
+        col = 0
     return (line, col, offset)
 
 
@@ -296,22 +375,21 @@ def parse(stream):
                 if ruleFlags:
                     if ParserRuleFlag.captureStart in ruleFlags:
                         capture = []
-                    if ParserRuleFlag.captureEnd in ruleFlags:
-                        print("capture: "+''.join(capture))
                     if ParserRuleFlag.capture in ruleFlags:
                         capture.append(current)
+                    if ParserRuleFlag.captureEnd in ruleFlags:
+                        print("capture: "+''.join(capture))
                 
                 state.pop()
                 
-                for i in reversed(restOfRule):
+                for i in restOfRule:
                     state.push(i)
                
                 #print("Rule matched! " + str(rule))
                 continue # NOTE could check no other rules match
         
         if match is None:
-            if symbol is not ProductionSymbol.S:
-                print("Syntax Error")
+            raise BachSyntaxError("unexpected "+repr(current), pos)
             return
         
         
