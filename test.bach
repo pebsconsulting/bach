@@ -1,10 +1,11 @@
 # Test with comments and string literals
 
+
 document
+    foo="bar"
+    bar
+    baz
+    a="boz"
+    note:   "this is a note"
 
-foo="bar"
-bar
-baz
-a="boz"
-
-"baz"
+foo 

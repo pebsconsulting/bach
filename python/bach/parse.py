@@ -210,6 +210,8 @@ ProductionRules = resolveParserRules([\
     ('WS',     'ϵws',  'ϵEmpty', 'ϵAll', 'ϵws',    [],                      []),
     # WC => ws WS
     ('WS',     'ϵws',  'ϵEmpty', 'ϵws',  'ϵEmpty', [],                      []),
+    # WC => ws, then EOF
+    ('WS',     'ϵws',  'ϵEmpty', 'ϵEof', 'ϵEmpty', [],                      []),
     
     # XSCC => ¬sc
     ('XSCC',  'ϵAll', 'ϵsc',    'ϵsc',  'ϵEmpty', [],                      ['captureEnd', 'capture']),
@@ -226,7 +228,7 @@ ProductionRules = resolveParserRules([\
     
     
     # --- Document may contain arbitrary whitespace
-    
+
     # D => ws D
     ('D',     'ϵws',  'ϵEmpty', 'ϵAll', 'ϵws',    ['D'],                   []),
     # D => ws WS D
