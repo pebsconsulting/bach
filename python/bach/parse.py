@@ -21,9 +21,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+
 from enum import Enum, unique
 from itertools import tee, zip_longest
 from functools import reduce
+
 
 class BachError(Exception): pass
 class BachRuntimeError(BachError): pass
@@ -67,21 +69,28 @@ class ProductionSymbol(Enum):
     LSQESC =  8 # Escape Sequence within 'Single'-Quoted String Literal Remainder
     LDQESC =  9 # Escape Sequence within "Double"-Quoted String Literal Remainder
     LBQESC = 10 # Escape Sequence within [Bracket]-Quoted String Literal Remainder
-    D      = 11 # Document (i.e. past any header comments)
+    D      = 11 # Document (i.e. past function label and any header comments)
     LD     = 12 # Literal followed by rest of D
     ALD    = 13 # Assignment followed by LD
     XSCC   = 14 # Excluding Special Characters Capture
+    SDS    = 15 # Subdocument Start (excludes opening parenthesis)
+    SD     = 16 # Subdocument (i.e. past function label)
     
     @staticmethod
     def fromString(s):
         return ProductionSymbol[s]
 
+
 @unique
 class CaptureSemantic(Enum):
     """Semantics captured at the level of the grammar"""
-    label      = 1
-    attribute  = 2
-    literal    = 3
+    none        = 0
+    label       = 1
+    attribute   = 2
+    literal     = 3
+    assign      = 4
+    subdocStart = 5
+    subdocEnd   = 6
     
     @staticmethod
     def fromString(s):
@@ -135,11 +144,16 @@ class ParserRuleFlag(Enum):
         return ParserRuleFlag[s]
 
 
-
-def resolveParserRules(rules):
+def buildParserRules(rules):
     """Given parser rules specified using a shorthand notation, expand each
        into the proper form and sort for efficient processing."""
+       
     def resolveTerminalSet(s):
+        # Given a string 'ϵname', '∉name', 'ϵabc', '∉abc', where 'name' is
+        # the name of a TerminalSet, or a plain sequence of characters,
+        # return a 2-tuple: (inCharacterSet, notInCharacterSet) such that a
+        # character matching both conditions satisfies the rule in our notation.
+    
         if s and (s[0] == 'ϵ'):
             try:
                 return (TerminalSet.fromString(s[1:]), TerminalSet.Empty)
@@ -153,29 +167,50 @@ def resolveParserRules(rules):
         else:
             raise Exception('Invalid rule '+repr(s))
     
+    # Given rules in our notation, resolve strings into values we can use
     for i in range(len(rules)):
         productionSymbol, currentCharMatch, lookaheadCharMatch, \
-            restOfRule, ruleFlags = rules[i]
+            restOfRule, ruleFlags, emitSemantic = rules[i]
         
         productionSymbol = ProductionSymbol.fromString(productionSymbol)
         currentCharIn, currentCharNotIn = resolveTerminalSet(currentCharMatch)
         lookaheadIn, lookaheadNotIn = resolveTerminalSet(lookaheadCharMatch)
         restOfRule = list(map(ProductionSymbol.fromString, restOfRule))
         ruleFlags = list(map(ParserRuleFlag.fromString, ruleFlags))
+        emitSemantic = CaptureSemantic.fromString(emitSemantic)
         
-        # rules are pushed on the stack in reverse order
+        # matching rules are pushed on the stack in reverse order
         restOfRule       = list(reversed(restOfRule))
         
-        # TODO sort rules by productionSymbol so we can binary search
-        
         rules[i] = (productionSymbol, currentCharIn, currentCharNotIn, \
-            lookaheadIn, lookaheadNotIn, restOfRule, ruleFlags)
+            lookaheadIn, lookaheadNotIn, restOfRule, ruleFlags, emitSemantic)
     
-    return rules
+    # sort so that rules with the same symbol are grouped together
+    rules.sort(key=lambda x: x[0].value)
+    
+    # to efficiently lookup all possible rules from a given symbol,
+    # build an index from symbol -> (firstRuleIndex, lastRuleIndex)
+    index = {}
+    for i in range(len(rules)):
+        symbol, _, _, _, _, _, _, _ = rules[i]
+        if symbol in index:
+            index[symbol] = (index[symbol][0], i)
+        else:
+            index[symbol] = (i, i)
+    
+    return (index, rules)
 
 
 
-ProductionRules = resolveParserRules([\
+def productionRulesBySymbol(ruledata, symbol):
+    """Generator function that yields only rules starting with a certain symbol"""
+    index, rules = ruledata
+    left, right = index[symbol]
+    for i in range(left, right+1):
+        yield rules[i]
+
+
+ProductionRules =  buildParserRules([\
     # These rules are very thorough because we are able to efficiently enforce
     # much of the semantics at the level of the language grammar itself.
     # All production rules are given in Greibach Normal Form, with one
@@ -198,119 +233,131 @@ ProductionRules = resolveParserRules([\
     # --- Rules for initial whitespace and comments at head of document
     
     # S => iws LF S
-    ('S',      'ϵiws',      'ϵlf',      ['LF', 'S'],            []),
+    ('S',      'ϵiws',      'ϵlf',      ['LF', 'S'],            [], 'none'),
     # S => iws IWS LF S
-    ('S',      'ϵiws',      '∉lf',      ['IWS', 'LF', 'S'],     []),
+    ('S',      'ϵiws',      '∉lf',      ['IWS', 'LF', 'S'],     [], 'none'),
     # IWS => iws
-    ('IWS',    'ϵiws',      '∉iws',     [],                     []),
+    ('IWS',    'ϵiws',      '∉iws',     [],                     [], 'none'),
     # IWS => iws IWS
-    ('IWS',    'ϵiws',      'ϵiws',     ['IWS'],                []),
+    ('IWS',    'ϵiws',      'ϵiws',     ['IWS'],                [], 'none'),
     # S => lf S
-    ('S',      'ϵlf',       'ϵAll',     ['S'],                  []),
+    ('S',      'ϵlf',       'ϵAll',     ['S'],                  [], 'none'),
     # LF => lf
-    ('LF',     'ϵlf',       'ϵAll',     [],                     []),
+    ('LF',     'ϵlf',       'ϵAll',     [],                     [], 'none'),
     # S => # C LF S
-    ('S',      'ϵ#',        '∉lf',      ['C', 'LF', 'S'],       []),
+    ('S',      'ϵ#',        '∉lf',      ['C', 'LF', 'S'],       [], 'none'),
     # S => # LF S
-    ('S',      'ϵ#',        'ϵlf',      ['LF', 'S'],            []),
+    ('S',      'ϵ#',        'ϵlf',      ['LF', 'S'],            [], 'none'),
     # C => ¬lf
-    ('C',      '∉lf',       'ϵlf',      [],                     []),
+    ('C',      '∉lf',       'ϵlf',      [],                     [], 'none'),
     # C => ¬lf C
-    ('C',      '∉lf',       '∉lf',      ['C'],                  []),
+    ('C',      '∉lf',       '∉lf',      ['C'],                  [], 'none'),
     
     
     # --- Rules for strings of "one or more" in a certain character set
     
     # WS => ws
-    ('WS',     'ϵws',       '∉ws',      [],                     []),
+    ('WS',     'ϵws',       '∉ws',      [],                     [], 'none'),
     # WC => ws WS
-    ('WS',     'ϵws',       'ϵws',      [],                     []),
+    ('WS',     'ϵws',       'ϵws',      [],                     [], 'none'),
     # WC => ws, then EOF
-    ('WS',     'ϵws',       'ϵEof',     [],                     []),
+    ('WS',     'ϵws',       'ϵEof',     [],                     [], 'none'),
     
     # XSCC => ¬sc
-    ('XSCC',    '∉sc',      'ϵsc',      [],                     ['captureEnd', 'capture']),
+    ('XSCC',    '∉sc',      'ϵsc',      [],                     ['captureEnd', 'capture'],                  'none'),
     # XSCC => ¬sc XSCC
-    ('XSCC',    '∉sc',      '∉sc',      ['XSCC'],               ['captureEnd', 'capture']),
+    ('XSCC',    '∉sc',      '∉sc',      ['XSCC'],               ['capture'],                                'none'),
     
     
     # --- Start of document, a function/label identifier on the first line
     
     # S => ¬sc WS D
-    ('S',       '∉sc',      'ϵws',      ['WS', 'D'],            ['captureStart', 'captureEnd', 'capture']),
+    ('S',       '∉sc',      'ϵws',      ['WS', 'D'],            ['captureStart', 'captureEnd', 'capture'],  'label'),
     # S => ¬sc XSCC D
-    ('S',       '∉sc',      '∉sc',      ['XSCC','D'],           ['captureStart', 'capture']),
+    ('S',       '∉sc',      '∉sc',      ['XSCC','D'],           ['captureStart', 'capture'],                'label'),
     
     
     # --- Document may contain arbitrary whitespace
 
     # D => ws D
-    ('D',       'ϵws',      '∉ws',      ['D'],                  []),
+    ('D',       'ϵws',      '∉ws',      ['D'],                  [], 'none'),
     # D => ws WS D
-    ('D',       'ϵws',      'ϵws',      ['WS', 'D'],            []),
+    ('D',       'ϵws',      'ϵws',      ['WS', 'D'],            [], 'none'),
     # D => ws, lookahead EOF - special case of end of document
-    ('D',       'ϵws',      'ϵEof',     [],                     []),
+    ('D',       'ϵws',      'ϵEof',     [],                     [], 'none'),
     
     
     # --- Attributes - standalone
     # (may be the start of a pair, but that can't yet be detected)
     
     # D => ¬sc WS D
-    ('D',       '∉sc',      'ϵws',      ['WS', 'D'],            ['captureStart', 'captureEnd', 'capture']),
+    ('D',       '∉sc',      'ϵws',      ['WS', 'D'],            ['captureStart', 'captureEnd', 'capture'],  'attribute'),
     # D => ¬sc XSCC D
-    ('D',       '∉sc',      '∉sc',      ['XSCC','D'],           ['captureStart', 'capture']),
+    ('D',       '∉sc',      '∉sc',      ['XSCC','D'],           ['captureStart', 'capture'],                'attribute'),
     
     
     # --- Attributes - pair start / pair second half
     
     # D => ¬sc asgn LD
-    ('D',       '∉sc',      'ϵasgn',    ['ALD'],                ['captureStart', 'captureEnd', 'capture']),
+    ('D',       '∉sc',      'ϵasgn',    ['ALD'],                ['captureStart', 'captureEnd', 'capture'],  'attribute'),
     # D => assgn LD
-    ('D',       'ϵasgn',    'ϵAll',     ['LD'],                 ['captureStart', 'captureEnd', 'capture']),
+    ('D',       'ϵasgn',    'ϵAll',     ['LD'],                 ['captureStart', 'captureEnd', 'capture'],  'assign'),
     # ALD => assign LD
-    ('ALD',     'ϵasgn',    'ϵAll',     ['LD'],                 []),
-    
-    
-    # --- Attribute pair whitespace
+    ('ALD',     'ϵasgn',    'ϵAll',     ['LD'],                 [],                                         'attribute'),
     # LD => ws LD
-    ('LD',      'ϵws',      '∉ws',      ['LD'],                 []),
-    # LD => ws WS LD
-    ('LD',      'ϵws',      'ϵws',      ['WS', 'LD'],           []),
+    ('LD',      'ϵws',      'ϵAll',     ['LD'],                 [],                                         'none'),
     
     
+    # --- Subdocuments Start
     
-    # Rules for 'Single'/"Double"/[bracket]-quoted literals and escapes
+    # D => ( SDS D
+    ('D',       'ϵ(',       'ϵAll',     ['SDS', 'D'],           ['captureStart', 'captureEnd', 'capture'],  'subdocStart'),
+    # SDS => ws SDS
+    ('SDS',      'ϵws',      'ϵAll',     ['SDS'],               [],                                         'none'),
+    
+    # --- Start of subdocument, a function/label identifier on the first line
+    
+    # SDS => ¬sc WS SD
+    ('SDS',     '∉sc',      'ϵws',      ['WS', 'SD'],           ['captureStart', 'captureEnd', 'capture'],  'label'),
+    # SDS => ¬sc XSCC SD
+    ('SDS',     '∉sc',      '∉sc',      ['XSCC','SD'],          ['captureStart', 'capture'],                'label'),
+    
+    # --- Rest of subdocument
+    
+    # SD => ( SDS SD
+    ('SD',      'ϵ(',       'ϵAll',     ['SDS', 'SD'],          ['captureStart', 'captureEnd', 'capture'],  'subdocStart'),
+    # SD => )
+    ('SD',      'ϵ)',       'ϵAll',     [],                     ['captureStart', 'captureEnd', 'capture'],  'subdocEnd'),
+    # SD => ws SD
+    ('SD',      'ϵws',      'ϵAll',     ['SD'],                 [],                                         'none'),
+
+
+    # --- Rules for 'Single'/"Double"/[bracket]-quoted literals and escapes
     
     # D   => " LDQ D
-    ('D',       'ϵ\'',      'ϵAll',     ['LSQ', 'D'],           ['captureStart']),
-    ('D',       'ϵ"',       'ϵAll',     ['LDQ', 'D'],           ['captureStart']),
-    ('D',       'ϵ[',       'ϵAll',     ['LBQ', 'D'],           ['captureStart']),
-    ('LD',      'ϵ\'',      'ϵAll',     ['LSQ', 'D'],           ['captureStart']),
-    ('LD',      'ϵ"',       'ϵAll',     ['LDQ', 'D'],           ['captureStart']),
-    ('LD',      'ϵ[',       'ϵAll',     ['LBQ', 'D'],           ['captureStart']),
+    ('D',       'ϵ\'',      'ϵAll',     ['LSQ', 'D'],           ['captureStart'],                           'literal'),
+    ('D',       'ϵ"',       'ϵAll',     ['LDQ', 'D'],           ['captureStart'],                           'literal'),
+    ('D',       'ϵ[',       'ϵAll',     ['LBQ', 'D'],           ['captureStart'],                           'literal'),
+    ('LD',      'ϵ\'',      'ϵAll',     ['LSQ', 'D'],           ['captureStart'],                           'literal'),
+    ('LD',      'ϵ"',       'ϵAll',     ['LDQ', 'D'],           ['captureStart'],                           'literal'),
+    ('LD',      'ϵ[',       'ϵAll',     ['LBQ', 'D'],           ['captureStart'],                           'literal'),
     # LDQ  => "
-    ('LSQ',     'ϵ\'',      'ϵAll',     [],                     ['captureEnd']),
-    ('LDQ',     'ϵ"',       'ϵAll',     [],                     ['captureEnd']),
-    ('LBQ',     'ϵ]',       'ϵAll',     [],                     ['captureEnd']),
+    ('LSQ',     'ϵ\'',      'ϵAll',     [],                     ['captureEnd'],                             'none'),
+    ('LDQ',     'ϵ"',       'ϵAll',     [],                     ['captureEnd'],                             'none'),
+    ('LBQ',     'ϵ]',       'ϵAll',     [],                     ['captureEnd'],                             'none'),
     # LDQ => ¬bs~" LDQ
-    ('LSQ',     '∉\\\'',    'ϵAll',     ['LSQ'],                ['capture']),
-    ('LDQ',     '∉\\"',     'ϵAll',     ['LDQ'],                ['capture']),
-    ('LBQ',     '∉\\]',     'ϵAll',     ['LBQ'],                ['capture']),
+    ('LSQ',     '∉\\\'',    'ϵAll',     ['LSQ'],                ['capture'],                                'none'),
+    ('LDQ',     '∉\\"',     'ϵAll',     ['LDQ'],                ['capture'],                                'none'),
+    ('LBQ',     '∉\\]',     'ϵAll',     ['LBQ'],                ['capture'],                                'none'),
     # LDQ  => bs LDQESC LDQ
-    ('LSQ',     'ϵbs',      'ϵAll',     ['LSQESC', 'LSQ'],      []),
-    ('LDQ',     'ϵbs',      'ϵAll',     ['LDQESC', 'LDQ'],      []),
-    ('LBQ',     'ϵbs',      'ϵAll',     ['LBQESC', 'LBQ'],      []),
+    ('LSQ',     'ϵbs',      'ϵAll',     ['LSQESC', 'LSQ'],      [],                                         'none'),
+    ('LDQ',     'ϵbs',      'ϵAll',     ['LDQESC', 'LDQ'],      [],                                         'none'),
+    ('LBQ',     'ϵbs',      'ϵAll',     ['LBQESC', 'LBQ'],      [],                                         'none'),
     # LDQESC => bs | cdq
-    ('LSQESC',  'ϵ\\\'',    'ϵAll',     [],                     ['capture']),
-    ('LDQESC',  'ϵ\\"',     'ϵAll',     [],                     ['capture']),
-    ('LBQESC',  'ϵ\\]',     'ϵAll',     [],                     ['capture']),
-    
-
+    ('LSQESC',  'ϵ\\\'',    'ϵAll',     [],                     ['capture'],                                'none'),
+    ('LDQESC',  'ϵ\\"',     'ϵAll',     [],                     ['capture'],                                'none'),
+    ('LBQESC',  'ϵ\\]',     'ϵAll',     [],                     ['capture'],                                'none'),
 ])
-
-for i in ProductionRules:
-    print(i)
-
 
 
 class ParserState:
@@ -319,30 +366,18 @@ class ParserState:
         # 1. the current production symbol
         # 2. the rule chosen
         # 3. how much of the rule we've done
-        self.stack = [(ProductionSymbol.S, 0, 0)]
+        self.stack = [ProductionSymbol.S]
     
     def top(self):
         return self.stack[-1]
     
     def pop(self):
-        print("Pop Symbol")
+        #print("Pop Symbol")
         self.stack.pop()
-        if self.stack:
-            symbol, rule, position = self.stack[-1]
-            self.stack[-1] = (symbol, rule, position + 1)
     
     def push(self, nextSymbol):
-        print("Push Symbol %s" % nextSymbol)
-        self.stack.append((nextSymbol, 0, 0))
-    
-    def setrule(self, rule):
-        symbol, _, position = self.stack[-1]
-        self.stack[-1] = (symbol, rule, position)
-
-    def cycle(self):
-        # lets us cheaply loop on a right-recursive rule
-        symbol, rule, position = self.stack[-1]
-        self.stack[-1] = (symbol, 0, 0)
+        #print("Push Symbol %s" % nextSymbol)
+        self.stack.append(nextSymbol)
 
 
 def setpos(currentPos, currentChar):
@@ -355,7 +390,6 @@ def setpos(currentPos, currentChar):
     return (line, col, offset)
 
 
-
 def parse(stream):
     state = ParserState()
     
@@ -366,23 +400,25 @@ def parse(stream):
     # e.g. the literal inside a quoted string
     capture = []
 
+    currentSemantic = None
+
     for (current, lookahead) in pairwise(streamToGenerator(stream)):
         pos = setpos(pos, current)
         
         match = None
+        
         try:
             top = state.top()
         except IndexError:
             raise BachSyntaxError("Expected: end of file", pos)
-        symbol, rule, position = top
-        print("symbol=%s, current=%s, lookahead=%s, pos=%s, d %d" % (repr(symbol), repr(current), repr(lookahead), pos, len(state.stack)))
+        symbol = top
+        #print("symbol=%s, current=%s, lookahead=%s, pos=%s, d %d" % (repr(symbol), repr(current), repr(lookahead), pos, len(state.stack)))
     
-        for rule in ProductionRules:
+        for rule in productionRulesBySymbol(ProductionRules, symbol):
             ruleSymbol, ruleCurrentIn, ruleCurrentNotIn, ruleLookaheadIn, \
-            ruleLookaheadNotIn, restOfRule, ruleFlags = rule
+            ruleLookaheadNotIn, restOfRule, ruleFlags, emitSemantic = rule
             
-            if  (symbol == ruleSymbol) and \
-                (TerminalSet.contains(ruleCurrentIn, current)) and \
+            if  (TerminalSet.contains(ruleCurrentIn, current)) and \
                 (not TerminalSet.contains(ruleCurrentNotIn, current)) and \
                 (TerminalSet.contains(ruleLookaheadIn, lookahead)) and \
                 (not TerminalSet.contains(ruleLookaheadNotIn, lookahead)):
@@ -392,10 +428,11 @@ def parse(stream):
                 if ruleFlags:
                     if ParserRuleFlag.captureStart in ruleFlags:
                         capture = []
+                        currentSemantic = emitSemantic
                     if ParserRuleFlag.capture in ruleFlags:
                         capture.append(current)
                     if ParserRuleFlag.captureEnd in ruleFlags:
-                        print("capture: "+''.join(capture))
+                        print("capture: %s as %s" % (repr(''.join(capture)), currentSemantic))
                 
                 state.pop()
                 
