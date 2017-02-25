@@ -21,10 +21,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
+import bach
 from enum import Enum, unique
 from itertools import tee, zip_longest
 from functools import reduce
+
+
+# default @profile decorator
+if bach.profile:
+    import builtins
+    try:
+        profile = builtins.profile
+    except AttributeError:
+        def profile(func):
+            return func
+else:
+    def profile(func):
+        return func
 
 
 class BachError(Exception): pass
@@ -39,6 +52,7 @@ class BachSyntaxError(BachRuntimeError):
         self.offset = offset
 
 
+@profile
 def pairwise(iterable):
     """For [a, b, c, ...] lazily return [(a, b), (b, c), (c, ...), (..., None)]"""
     # simply from https://docs.python.org/3/library/itertools.html#itertools-recipes
@@ -47,12 +61,18 @@ def pairwise(iterable):
     return zip_longest(a, b)
 
 
+@profile
 def streamToGenerator(stream):
     """Lazily read a character from a stream at a time"""
     while True:
-        c = stream.read(1)
-        if not c: break # EOF
-        yield c
+        c = stream.read(bach.bufsz)
+        if len(c) == 0:
+            break # EOF
+        if len(c) == 1:
+            yield c
+            break
+        for i in c:
+            yield i
 
 
 @unique
@@ -77,6 +97,7 @@ class ProductionSymbol(Enum):
     SD     = 16 # Subdocument (i.e. past function label)
     
     @staticmethod
+    @profile
     def fromString(s):
         return ProductionSymbol[s]
 
@@ -93,6 +114,7 @@ class CaptureSemantic(Enum):
     subdocEnd   = 6
     
     @staticmethod
+    @profile
     def fromString(s):
         return CaptureSemantic[s]
 
@@ -117,6 +139,7 @@ class TerminalSet():
     asgn  = '=:'         # assignment characters
     
     @staticmethod
+    @profile
     def contains(collection, element):
         if collection is None:
             return True if element is None else False # Eof
@@ -127,6 +150,7 @@ class TerminalSet():
         return element in collection
     
     @staticmethod
+    @profile
     def fromString(s):
         return getattr(TerminalSet, s)
 
@@ -136,18 +160,39 @@ class ParserRuleFlag(Enum):
     """Semantic annotations for each rule e.g. for lexeme output"""
     captureStart = 1
     captureEnd   = 2
-    capture      = 3
+    capture      = 4
     
     @staticmethod
+    @profile
     def fromString(s):
-        if not s: return 0
         return ParserRuleFlag[s]
 
+    @staticmethod
+    @profile
+    def toValueFromString(s):
+        return ParserRuleFlag[s].value
+    
+    @staticmethod
+    @profile
+    def containsCapture(f):
+        return (f & ParserRuleFlag.capture.value) == ParserRuleFlag.capture.value
+    
+    @staticmethod
+    @profile
+    def containsCaptureStart(f):
+        return (f & ParserRuleFlag.captureStart.value) == ParserRuleFlag.captureStart.value
 
+    @staticmethod
+    @profile
+    def containsCaptureEnd(f):
+        return (f & ParserRuleFlag.captureEnd.value) == ParserRuleFlag.captureEnd.value
+
+
+@profile
 def buildParserRules(rules):
     """Given parser rules specified using a shorthand notation, expand each
        into the proper form and sort for efficient processing."""
-       
+   
     def resolveTerminalSet(s):
         # Given a string 'ϵname', '∉name', 'ϵabc', '∉abc', where 'name' is
         # the name of a TerminalSet, or a plain sequence of characters,
@@ -176,7 +221,7 @@ def buildParserRules(rules):
         currentCharIn, currentCharNotIn = resolveTerminalSet(currentCharMatch)
         lookaheadIn, lookaheadNotIn = resolveTerminalSet(lookaheadCharMatch)
         restOfRule = list(map(ProductionSymbol.fromString, restOfRule))
-        ruleFlags = list(map(ParserRuleFlag.fromString, ruleFlags))
+        ruleFlags = sum(map(ParserRuleFlag.toValueFromString, ruleFlags))
         emitSemantic = CaptureSemantic.fromString(emitSemantic)
         
         # matching rules are pushed on the stack in reverse order
@@ -201,7 +246,7 @@ def buildParserRules(rules):
     return (index, rules)
 
 
-
+@profile
 def productionRulesBySymbol(ruledata, symbol):
     """Generator function that yields only rules starting with a certain symbol"""
     index, rules = ruledata
@@ -360,7 +405,9 @@ ProductionRules =  buildParserRules([\
 ])
 
 
+
 class ParserState:
+    @profile
     def __init__(self):
         # a stack to keep track of
         # 1. the current production symbol
@@ -368,18 +415,22 @@ class ParserState:
         # 3. how much of the rule we've done
         self.stack = [ProductionSymbol.S]
     
+    @profile
     def top(self):
         return self.stack[-1]
     
+    @profile
     def pop(self):
         #print("Pop Symbol")
         self.stack.pop()
     
+    @profile
     def push(self, nextSymbol):
         #print("Push Symbol %s" % nextSymbol)
         self.stack.append(nextSymbol)
 
 
+@profile
 def setpos(currentPos, currentChar):
     line, col, offset = currentPos
     offset = offset + 1
@@ -390,6 +441,7 @@ def setpos(currentPos, currentChar):
     return (line, col, offset)
 
 
+@profile
 def parse(stream):
     state = ParserState()
     
@@ -426,13 +478,14 @@ def parse(stream):
                 match = rule
                 
                 if ruleFlags:
-                    if ParserRuleFlag.captureStart in ruleFlags:
+                    if ParserRuleFlag.containsCaptureStart(ruleFlags):
                         capture = []
                         currentSemantic = emitSemantic
-                    if ParserRuleFlag.capture in ruleFlags:
+                    if ParserRuleFlag.containsCapture(ruleFlags):
                         capture.append(current)
-                    if ParserRuleFlag.captureEnd in ruleFlags:
-                        print("capture: %s as %s" % (repr(''.join(capture)), currentSemantic))
+                    if ParserRuleFlag.containsCaptureEnd(ruleFlags):
+                        #print("capture: %s as %s" % (repr(''.join(capture)), currentSemantic))
+                        pass
                 
                 state.pop()
                 

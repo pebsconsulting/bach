@@ -21,4 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+profile=False
+bufsz=64*1024
 from .parse import parse
+
