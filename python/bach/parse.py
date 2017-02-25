@@ -141,20 +141,27 @@ def resolveParserRules(rules):
        into the proper form and sort for efficient processing."""
     def resolveTerminalSet(s):
         if s and (s[0] == 'ϵ'):
-            return TerminalSet.fromString(s[1:])
-        return s
+            try:
+                return (TerminalSet.fromString(s[1:]), TerminalSet.Empty)
+            except AttributeError:
+                return (s[1:], TerminalSet.Empty)
+        elif s and (s[0] == '∉'):
+            try:
+                return (TerminalSet.All, TerminalSet.fromString(s[1:]))
+            except AttributeError:
+                return (TerminalSet.All, s[1:])
+        else:
+            raise Exception('Invalid rule '+repr(s))
     
     for i in range(len(rules)):
-        productionSymbol, currentCharIn, currentCharNotIn, lookaheadIn, \
-        lookaheadNotIn, restOfRule, ruleFlags = rules[i]
+        productionSymbol, currentCharMatch, lookaheadCharMatch, \
+            restOfRule, ruleFlags = rules[i]
         
         productionSymbol = ProductionSymbol.fromString(productionSymbol)
-        currentCharIn    = resolveTerminalSet(currentCharIn)
-        currentCharNotIn = resolveTerminalSet(currentCharNotIn)
-        lookaheadIn      = resolveTerminalSet(lookaheadIn)
-        lookaheadNotIn   = resolveTerminalSet(lookaheadNotIn)
-        restOfRule       = list(map(ProductionSymbol.fromString, restOfRule))
-        ruleFlags        = list(map(ParserRuleFlag.fromString, ruleFlags))
+        currentCharIn, currentCharNotIn = resolveTerminalSet(currentCharMatch)
+        lookaheadIn, lookaheadNotIn = resolveTerminalSet(lookaheadCharMatch)
+        restOfRule = list(map(ProductionSymbol.fromString, restOfRule))
+        ruleFlags = list(map(ParserRuleFlag.fromString, ruleFlags))
         
         # rules are pushed on the stack in reverse order
         restOfRule       = list(reversed(restOfRule))
@@ -175,133 +182,128 @@ ProductionRules = resolveParserRules([\
     # character of lookahead to resolve ambiguities, i.e. LL(1).
 
     # Each rule is a tuple:
-    # - production symbol,
-    # - current character in TerminalSet?
-    # - current character not in TerminalSet?
-    # - lookahead in TerminalSet?
-    # - lookahead not in TerminalSet?
+    # - Production Symbol,
+    # - current character matches TerminalSet? (ϵ/∉)
+    # - lookahead character matches TerminalSet? (ϵ/∉)
     # - rest of rule (list of ProductionSymbols),
     # - flags (list of ParserRuleFlags)
     # - capture semantic
     
-    # TODO - we only use one of either the InSet or NotInSet at any time
-    # -- combine this into a single field with ϵ/∉.
-    
     # Use 'A' for ProductionSymbol.A
-    # Use 'ϵname' for a named TerminalSet.name, 'abc' for the literals a|b|c
+    # Use 'ϵname' for In named TerminalSet.name, 'ϵabc' for In set ('a','b','c')
+    # Use '∉name' for Not In named TerminalSet.name, '∉abc' for Not In set ('a','b','c')
     # Use 'name' for a ParserRuleFlag.name
     # Use 'name' for CaptureSemantic.name
-
 
     # --- Rules for initial whitespace and comments at head of document
     
     # S => iws LF S
-    ('S',      'ϵiws', 'ϵEmpty', 'ϵlf',  'ϵEmpty', ['LF', 'S'],             []),
+    ('S',      'ϵiws',      'ϵlf',      ['LF', 'S'],            []),
     # S => iws IWS LF S
-    ('S',      'ϵiws', 'ϵEmpty', 'ϵAll', 'ϵlf',    ['IWS', 'LF', 'S'],      []),
+    ('S',      'ϵiws',      '∉lf',      ['IWS', 'LF', 'S'],     []),
     # IWS => iws
-    ('IWS',    'ϵiws', 'ϵEmpty', 'ϵAll', 'ϵiws',   [],                      []),
+    ('IWS',    'ϵiws',      '∉iws',     [],                     []),
     # IWS => iws IWS
-    ('IWS',    'ϵiws', 'ϵEmpty', 'ϵiws', 'ϵEmpty', ['IWS'],                 []),
+    ('IWS',    'ϵiws',      'ϵiws',     ['IWS'],                []),
     # S => lf S
-    ('S',      'ϵlf',  'ϵEmpty', 'ϵAll', 'ϵEmpty', ['S'],                   []),
+    ('S',      'ϵlf',       'ϵAll',     ['S'],                  []),
     # LF => lf
-    ('LF',     'ϵlf',  'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      []),
+    ('LF',     'ϵlf',       'ϵAll',     [],                     []),
     # S => # C LF S
-    ('S',      '#',    'ϵEmpty', 'ϵAll', 'ϵlf',    ['C', 'LF', 'S'],        []),
+    ('S',      'ϵ#',        '∉lf',      ['C', 'LF', 'S'],       []),
     # S => # LF S
-    ('S',      '#',    'ϵEmpty', 'ϵlf',  'ϵEmpty', ['LF', 'S'],             []),
+    ('S',      'ϵ#',        'ϵlf',      ['LF', 'S'],            []),
     # C => ¬lf
-    ('C',      'ϵAll', 'ϵlf',    'ϵlf',  'ϵEmpty', [],                      []),
+    ('C',      '∉lf',       'ϵlf',      [],                     []),
     # C => ¬lf C
-    ('C',      'ϵAll', 'ϵlf',    'ϵAll', 'ϵlf',    ['C'],                   []),
+    ('C',      '∉lf',       '∉lf',      ['C'],                  []),
     
     
     # --- Rules for strings of "one or more" in a certain character set
     
     # WS => ws
-    ('WS',     'ϵws',  'ϵEmpty', 'ϵAll', 'ϵws',    [],                      []),
+    ('WS',     'ϵws',       '∉ws',      [],                     []),
     # WC => ws WS
-    ('WS',     'ϵws',  'ϵEmpty', 'ϵws',  'ϵEmpty', [],                      []),
+    ('WS',     'ϵws',       'ϵws',      [],                     []),
     # WC => ws, then EOF
-    ('WS',     'ϵws',  'ϵEmpty', 'ϵEof', 'ϵEmpty', [],                      []),
+    ('WS',     'ϵws',       'ϵEof',     [],                     []),
     
     # XSCC => ¬sc
-    ('XSCC',  'ϵAll', 'ϵsc',    'ϵsc',  'ϵEmpty', [],                      ['captureEnd', 'capture']),
+    ('XSCC',    '∉sc',      'ϵsc',      [],                     ['captureEnd', 'capture']),
     # XSCC => ¬sc XSCC
-    ('XSCC',  'ϵAll', 'ϵsc',    'ϵAll', 'ϵsc',    ['XSCC'],                ['captureEnd', 'capture']),
+    ('XSCC',    '∉sc',      '∉sc',      ['XSCC'],               ['captureEnd', 'capture']),
     
     
     # --- Start of document, a function/label identifier on the first line
     
     # S => ¬sc WS D
-    ('S',      'ϵAll', 'ϵsc',    'ϵws',  'ϵEmpty', ['WS', 'D'],             ['captureStart', 'captureEnd', 'capture']),
+    ('S',       '∉sc',      'ϵws',      ['WS', 'D'],            ['captureStart', 'captureEnd', 'capture']),
     # S => ¬sc XSCC D
-    ('S',      'ϵAll', 'ϵsc',    'ϵAll', 'ϵsc',    ['XSCC','D'],            ['captureStart', 'capture']),
+    ('S',       '∉sc',      '∉sc',      ['XSCC','D'],           ['captureStart', 'capture']),
     
     
     # --- Document may contain arbitrary whitespace
 
     # D => ws D
-    ('D',     'ϵws',  'ϵEmpty', 'ϵAll', 'ϵws',    ['D'],                   []),
+    ('D',       'ϵws',      '∉ws',      ['D'],                  []),
     # D => ws WS D
-    ('D',     'ϵws',  'ϵEmpty', 'ϵws',  'ϵEmpty', ['WS', 'D'],             []),
+    ('D',       'ϵws',      'ϵws',      ['WS', 'D'],            []),
     # D => ws, lookahead EOF - special case of end of document
-    ('D',     'ϵws',  'ϵEmpty', 'ϵEof', 'ϵEmpty', [], []),
+    ('D',       'ϵws',      'ϵEof',     [],                     []),
     
     
     # --- Attributes - standalone
     # (may be the start of a pair, but that can't yet be detected)
     
     # D => ¬sc WS D
-    ('D',      'ϵAll', 'ϵsc',    'ϵws',  'ϵEmpty', ['WS', 'D'],            ['captureStart', 'captureEnd', 'capture']),
+    ('D',       '∉sc',      'ϵws',      ['WS', 'D'],            ['captureStart', 'captureEnd', 'capture']),
     # D => ¬sc XSCC D
-    ('D',      'ϵAll', 'ϵsc',    'ϵAll', 'ϵsc',    ['XSCC','D'],           ['captureStart', 'capture']),
+    ('D',       '∉sc',      '∉sc',      ['XSCC','D'],           ['captureStart', 'capture']),
     
     
     # --- Attributes - pair start / pair second half
     
     # D => ¬sc asgn LD
-    ('D',      'ϵAll', 'ϵsc',    'ϵasgn','ϵEmpty', ['ALD'],                ['captureStart', 'captureEnd', 'capture']),
+    ('D',       '∉sc',      'ϵasgn',    ['ALD'],                ['captureStart', 'captureEnd', 'capture']),
     # D => assgn LD
-    ('D',      'ϵasgn', 'ϵEmpty','ϵAll', 'ϵEmpty', ['LD'],                 ['captureStart', 'captureEnd', 'capture']),
+    ('D',       'ϵasgn',    'ϵAll',     ['LD'],                 ['captureStart', 'captureEnd', 'capture']),
     # ALD => assign LD
-    ('ALD',    'ϵasgn', 'ϵEmpty','ϵAll', 'ϵEmpty', ['LD'],                 []),
+    ('ALD',     'ϵasgn',    'ϵAll',     ['LD'],                 []),
     
     
     # --- Attribute pair whitespace
     # LD => ws LD
-    ('LD',    'ϵws',  'ϵEmpty', 'ϵAll', 'ϵws',    ['LD'],                  []),
+    ('LD',      'ϵws',      '∉ws',      ['LD'],                 []),
     # LD => ws WS LD
-    ('LD',    'ϵws',  'ϵEmpty', 'ϵws',  'ϵEmpty', ['WS', 'LD'],            []),
+    ('LD',      'ϵws',      'ϵws',      ['WS', 'LD'],           []),
     
     
     
     # Rules for 'Single'/"Double"/[bracket]-quoted literals and escapes
     
     # D   => " LDQ D
-    ('D',      '\'',   'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LSQ', 'D'],            ['captureStart']),
-    ('D',      '"',    'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LDQ', 'D'],            ['captureStart']),
-    ('D',      '[',    'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LBQ', 'D'],            ['captureStart']),
-    ('LD',     '\'',   'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LSQ', 'D'],            ['captureStart']),
-    ('LD',     '"',    'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LDQ', 'D'],            ['captureStart']),
-    ('LD',     '[',    'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LBQ', 'D'],            ['captureStart']),
+    ('D',       'ϵ\'',      'ϵAll',     ['LSQ', 'D'],           ['captureStart']),
+    ('D',       'ϵ"',       'ϵAll',     ['LDQ', 'D'],           ['captureStart']),
+    ('D',       'ϵ[',       'ϵAll',     ['LBQ', 'D'],           ['captureStart']),
+    ('LD',      'ϵ\'',      'ϵAll',     ['LSQ', 'D'],           ['captureStart']),
+    ('LD',      'ϵ"',       'ϵAll',     ['LDQ', 'D'],           ['captureStart']),
+    ('LD',      'ϵ[',       'ϵAll',     ['LBQ', 'D'],           ['captureStart']),
     # LDQ  => "
-    ('LSQ',    '\'',   'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['captureEnd']),
-    ('LDQ',    '"',    'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['captureEnd']),
-    ('LBQ',    ']',    'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['captureEnd']),
+    ('LSQ',     'ϵ\'',      'ϵAll',     [],                     ['captureEnd']),
+    ('LDQ',     'ϵ"',       'ϵAll',     [],                     ['captureEnd']),
+    ('LBQ',     'ϵ]',       'ϵAll',     [],                     ['captureEnd']),
     # LDQ => ¬bs~" LDQ
-    ('LSQ',    'ϵAll', '\\\'',   'ϵAll', 'ϵEmpty', ['LSQ'],                 ['capture']),
-    ('LDQ',    'ϵAll', '\\"',    'ϵAll', 'ϵEmpty', ['LDQ'],                 ['capture']),
-    ('LBQ',    'ϵAll', '\\]',    'ϵAll', 'ϵEmpty', ['LBQ'],                 ['capture']),
+    ('LSQ',     '∉\\\'',    'ϵAll',     ['LSQ'],                ['capture']),
+    ('LDQ',     '∉\\"',     'ϵAll',     ['LDQ'],                ['capture']),
+    ('LBQ',     '∉\\]',     'ϵAll',     ['LBQ'],                ['capture']),
     # LDQ  => bs LDQESC LDQ
-    ('LSQ',    'ϵbs',  'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LSQESC', 'LSQ'],       []),
-    ('LDQ',    'ϵbs',  'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LDQESC', 'LDQ'],       []),
-    ('LBQ',    'ϵbs',  'ϵEmpty', 'ϵAll', 'ϵEmpty', ['LBQESC', 'LBQ'],       []),
+    ('LSQ',     'ϵbs',      'ϵAll',     ['LSQESC', 'LSQ'],      []),
+    ('LDQ',     'ϵbs',      'ϵAll',     ['LDQESC', 'LDQ'],      []),
+    ('LBQ',     'ϵbs',      'ϵAll',     ['LBQESC', 'LBQ'],      []),
     # LDQESC => bs | cdq
-    ('LSQESC', '\\\'', 'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['capture']),
-    ('LDQESC', '\\"',  'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['capture']),
-    ('LBQESC', '\\]',  'ϵEmpty', 'ϵAll', 'ϵEmpty', [],                      ['capture']),
+    ('LSQESC',  'ϵ\\\'',    'ϵAll',     [],                     ['capture']),
+    ('LDQESC',  'ϵ\\"',     'ϵAll',     [],                     ['capture']),
+    ('LBQESC',  'ϵ\\]',     'ϵAll',     [],                     ['capture']),
     
 
 ])
