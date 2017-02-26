@@ -10,7 +10,10 @@ document
     
     "foo"
 
-    (foo (foo (foo)) )
+    (foo "test" bar="bar" fa f)
+    
+    f
+    (f)
     
 
 

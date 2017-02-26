@@ -95,6 +95,8 @@ class ProductionSymbol(Enum):
     XSCC   = 14 # Excluding Special Characters Capture
     SDS    = 15 # Subdocument Start (excludes opening parenthesis)
     SD     = 16 # Subdocument (i.e. past function label)
+    LSD    = 17 # Literal followed vy rest of SD
+    ALSD   = 18 # Assignment followed by LSD
     
     @staticmethod
     @profile
@@ -189,9 +191,9 @@ class ParserRuleFlag(Enum):
 
 
 @profile
-def buildParserRules(rules):
-    """Given parser rules specified using a shorthand notation, expand each
-       into the proper form and sort for efficient processing."""
+def buildProductionRules(rules):
+    """Given grammar rules specified using a shorthand notation, expand each
+       into the proper form, then sort and index for efficient processing."""
    
     def resolveTerminalSet(s):
         # Given a string 'ϵname', '∉name', 'ϵabc', '∉abc', where 'name' is
@@ -255,7 +257,7 @@ def productionRulesBySymbol(ruledata, symbol):
         yield rules[i]
 
 
-ProductionRules =  buildParserRules([\
+ProductionRules =  buildProductionRules([\
     # These rules are very thorough because we are able to efficiently enforce
     # much of the semantics at the level of the language grammar itself.
     # All production rules are given in Greibach Normal Form, with one
@@ -339,7 +341,12 @@ ProductionRules =  buildParserRules([\
     ('D',       '∉sc',      'ϵws',      ['WS', 'D'],            ['captureStart', 'captureEnd', 'capture'],  'attribute'),
     # D => ¬sc XSCC D
     ('D',       '∉sc',      '∉sc',      ['XSCC','D'],           ['captureStart', 'capture'],                'attribute'),
-    
+    # SD => ¬sc WS SD
+    ('SD',       '∉sc',     'ϵws',      ['WS', 'SD'],           ['captureStart', 'captureEnd', 'capture'],  'attribute'),
+    # SD => ¬sc XSCC SD
+    ('SD',       '∉sc',     '∉sc',      ['XSCC','SD'],          ['captureStart', 'capture'],                'attribute'),
+    # SD => ¬sc )
+    ('SD',       '∉sc',     'ϵ)',       ['SD'],                 ['captureStart', 'captureEnd', 'capture'],  'attribute'),
     
     # --- Attributes - pair start / pair second half
     
@@ -351,14 +358,21 @@ ProductionRules =  buildParserRules([\
     ('ALD',     'ϵasgn',    'ϵAll',     ['LD'],                 [],                                         'attribute'),
     # LD => ws LD
     ('LD',      'ϵws',      'ϵAll',     ['LD'],                 [],                                         'none'),
-    
+     # SD => ¬sc asgn LSD
+    ('SD',      '∉sc',      'ϵasgn',    ['ALSD'],               ['captureStart', 'captureEnd', 'capture'],  'attribute'),
+    # SD => assgn LSD
+    ('SD',      'ϵasgn',    'ϵAll',     ['LSD'],                ['captureStart', 'captureEnd', 'capture'],  'assign'),
+    # ALSD => assign LSD
+    ('ALSD',    'ϵasgn',    'ϵAll',     ['LSD'],                [],                                         'attribute'),
+    # LSD => ws LSD
+    ('LSD',     'ϵws',      'ϵAll',     ['LSD'],                [],                                         'none'),   
     
     # --- Subdocuments Start
     
     # D => ( SDS D
     ('D',       'ϵ(',       'ϵAll',     ['SDS', 'D'],           ['captureStart', 'captureEnd', 'capture'],  'subdocStart'),
     # SDS => ws SDS
-    ('SDS',      'ϵws',      'ϵAll',     ['SDS'],               [],                                         'none'),
+    ('SDS',     'ϵws',      'ϵAll',     ['SDS'],               [],                                         'none'),
     
     # --- Start of subdocument, a function/label identifier on the first line
     
@@ -366,6 +380,8 @@ ProductionRules =  buildParserRules([\
     ('SDS',     '∉sc',      'ϵws',      ['WS', 'SD'],           ['captureStart', 'captureEnd', 'capture'],  'label'),
     # SDS => ¬sc XSCC SD
     ('SDS',     '∉sc',      '∉sc',      ['XSCC','SD'],          ['captureStart', 'capture'],                'label'),
+    # SDS => ¬sc )
+    ('SDS',     '∉sc',      'ϵ)',       ['SD'],                 ['captureStart', 'captureEnd', 'capture'],  'label'),
     
     # --- Rest of subdocument
     
@@ -386,6 +402,12 @@ ProductionRules =  buildParserRules([\
     ('LD',      'ϵ\'',      'ϵAll',     ['LSQ', 'D'],           ['captureStart'],                           'literal'),
     ('LD',      'ϵ"',       'ϵAll',     ['LDQ', 'D'],           ['captureStart'],                           'literal'),
     ('LD',      'ϵ[',       'ϵAll',     ['LBQ', 'D'],           ['captureStart'],                           'literal'),
+    ('SD',      'ϵ\'',      'ϵAll',     ['LSQ', 'SD'],          ['captureStart'],                           'literal'),
+    ('SD',      'ϵ"',       'ϵAll',     ['LDQ', 'SD'],          ['captureStart'],                           'literal'),
+    ('SD',      'ϵ[',       'ϵAll',     ['LBQ', 'SD'],          ['captureStart'],                           'literal'),
+    ('LSD',     'ϵ\'',      'ϵAll',     ['LSQ', 'SD'],          ['captureStart'],                           'literal'),
+    ('LSD',     'ϵ"',       'ϵAll',     ['LDQ', 'SD'],          ['captureStart'],                           'literal'),
+    ('LSD',     'ϵ[',       'ϵAll',     ['LBQ', 'SD'],          ['captureStart'],                           'literal'),
     # LDQ  => "
     ('LSQ',     'ϵ\'',      'ϵAll',     [],                     ['captureEnd'],                             'none'),
     ('LDQ',     'ϵ"',       'ϵAll',     [],                     ['captureEnd'],                             'none'),
@@ -406,7 +428,7 @@ ProductionRules =  buildParserRules([\
 
 
 
-class ParserState:
+class LexerState:
     @profile
     def __init__(self):
         # a stack to keep track of
@@ -431,38 +453,33 @@ class ParserState:
 
 
 @profile
-def setpos(currentPos, currentChar):
-    line, col, offset = currentPos
-    offset = offset + 1
-    col = col + 1
-    if (currentChar == '\n'):
-        line = line + 1
-        col = 0
-    return (line, col, offset)
-
-
-@profile
-def parse(stream):
-    state = ParserState()
+def tokenise(stream):
+    yield (CaptureSemantic.subdocStart, '(')
+    
+    state = LexerState()
     
     # a counter for line, col, absolute offset of the stream (counting from 1)
-    pos = (1, 0, 0)
+    line, col, offset = (1, 0, 0)
     
     # a list of characters making up a single token
     # e.g. the literal inside a quoted string
     capture = []
 
     currentSemantic = None
-
+    
     for (current, lookahead) in pairwise(streamToGenerator(stream)):
-        pos = setpos(pos, current)
+        offset += 1
+        col += 1
+        if (current is '\n'):
+            line += 1
+            col = 0
         
         match = None
         
         try:
             top = state.top()
         except IndexError:
-            raise BachSyntaxError("Expected: end of file", pos)
+            raise BachSyntaxError("Expected: end of file", (line, col, offset))
         symbol = top
         #print("symbol=%s, current=%s, lookahead=%s, pos=%s, d %d" % (repr(symbol), repr(current), repr(lookahead), pos, len(state.stack)))
     
@@ -484,8 +501,7 @@ def parse(stream):
                     if ParserRuleFlag.containsCapture(ruleFlags):
                         capture.append(current)
                     if ParserRuleFlag.containsCaptureEnd(ruleFlags):
-                        #print("capture: %s as %s" % (repr(''.join(capture)), currentSemantic))
-                        pass
+                        yield (currentSemantic, ''.join(capture))
                 
                 state.pop()
                 
@@ -493,14 +509,19 @@ def parse(stream):
                     state.push(i)
                
                 #print("Rule matched! " + str(rule))
-                continue # NOTE could check no other rules match
+                continue # NOTE could verify no other rules match
         
         if match is None:
-            raise BachSyntaxError("unexpected "+repr(current), pos)
+            raise BachSyntaxError("unexpected "+repr(current), (line, col, offset))
             return
-        
-        
-        
+    
+    yield (CaptureSemantic.subdocEnd, ')')
+
+
+@profile
+def parse(stream):
+    for (tokenType, lexeme) in tokenise(stream):
+        print(tokenType, repr(lexeme))
         
 
 

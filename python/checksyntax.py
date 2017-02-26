@@ -41,7 +41,6 @@ fp = io.TextIOWrapper(sys.stdin.buffer, encoding=args.encoding, newline='')
 
 # We now have a file-object (https://docs.python.org/3.4/glossary.html#term-file-object)
 # that can be read a valid Unicode character at a time.
-# sys.stdin is buffered by default - use a buffered source for performance!
 bach.parse(fp)
 
 
