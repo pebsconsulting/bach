@@ -28,24 +28,27 @@ debug=True
 # for use with profiling tools e.g. kernprof
 profile=False
 
-# Internal buffer size, keep as 64k
+# Internal buffer size - 64k gives good performance
 bufsz=64*1024
 
 # Sanity settings to avoid malicious inputs
 # -- parse speed is always linear to the input size,
 # -- but memory consumption isn't
+# -- string lengths are characters, not bytes
 
 max_label_name_len         =           127
-max_attribute_name_len     =           127 
+max_attribute_name_len     =           127
 
-max_attribute_value_len    =       64*1024
+max_attribute_value_len    =      256*1024
 max_literal_value_len      =   4*1024*1024
 
-max_attributes_per_label   =          1024
-max_subdocuments_per_label =        8*1024
-max_literals_per_label     =        8*1024
+max_attributes_per_label   =           256
+max_subdocuments_per_label =       32*1024
+max_literals_per_label     =       32*1024
 
-max_subdocuments_globally  =       64*1024
+max_subdocument_depth      =            64
+
+max_subdocuments_globally  =      256*1024
 max_literals_globally      =      256*1024
 
 

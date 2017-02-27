@@ -42,9 +42,9 @@ else:
 
 class BachError(Exception): pass
 class BachRuntimeError(BachError): pass
-class BachSecurityError(BachRuntimeError): pass
+class BachParseError(BachRuntimeError): pass
 
-class BachSecurityLimitError(BachSecurityError):
+class BachParseLimitError(BachParseError):
     def __init__(self, message, rule, pos):
         line, col, offset = pos
         super().__init__("%s (%s is %d) at line %d column %d (character %d).\n" % \
@@ -52,8 +52,6 @@ class BachSecurityLimitError(BachSecurityError):
         self.lineno = line
         self.column = col
         self.offset = offset
-
-class BachParseError(BachRuntimeError): pass
 
 class BachSyntaxError(BachParseError):
     def __init__(self, message, state, pos):
@@ -71,8 +69,8 @@ class BachSemanticError(BachParseError):
     def __init__(self, message, state, pos):
         line, col, offset = pos
         xtra = ''
-        if bach.debug:
-            xtra = 'Parser state: %s\n' % repr(state.stack)
+        if state and bach.debug:
+            xtra = 'Parser state: %s\n' % repr(state.root())
         super().__init__("%s at line %d column %d (character %d).\n%sHelp: %s" % \
             (message, line, col, offset, xtra, 'None'))
         self.lineno = line
@@ -562,9 +560,9 @@ def tokenise(stream):
 class Document:
     @profile
     def __init__(self):
-        # document = (label, [shorthand], {attributes}, [contents])
+        # document = (label, {shorthand}, {attributes}, [contents])
         self.label      = None
-        self.shorthand  = []
+        self.shorthand  = {}
         self.attributes = {}
         self.contents   = []
     
@@ -573,9 +571,26 @@ class Document:
         assert self.label is None
         
         if len(s) > bach.max_label_name_len:
-            raise BachSecurityLimitError("Label name length limit exceeded", 'max_label_name_len', pos);
+            raise BachParseLimitError("Label name length limit exceeded", 'max_label_name_len', pos);
         
         self.label = s
+    
+    @profile
+    def setAttribute(self, s, pos, value=None):
+        if s in self.attributes:
+            raise BachSemanticError("Duplicate attribute %s in document %s" % (repr(s), repr(self.label)), None, pos)
+        self.attributes[s] = value
+    
+    @profile
+    def addShorthand(self, symbol, value, pos):
+        assert symbol in TerminalSet.ss
+        if not symbol in self.shorthand:
+            self.shorthand[symbol] = []
+        self.shorthand[symbol].append(value)
+    
+    @profile
+    def addLiteral(self, s, pos):
+        self.contents.append(s)
     
     @profile
     def toTuple(self):
@@ -617,7 +632,6 @@ class ParserState:
         self.stack.append(d)
 
 
-
 @profile
 def parse(stream):
     tokens = pairwise(tokenise(stream))
@@ -635,12 +649,31 @@ def parse(stream):
         
         if tokenType is CaptureSemantic.label:
             state.top().setLabel(lexeme, pos)
+        elif tokenType is CaptureSemantic.literal:
+            state.top().addLiteral(lexeme, pos)
         elif tokenType is CaptureSemantic.subdocStart:
             state.push()
         elif tokenType is CaptureSemantic.subdocEnd:
             state.pop()
+        
+        elif tokenType is CaptureSemantic.attribute:
+            if lookahead is CaptureSemantic.assign:
+                _, _ = next(tokens)
+                current, _ = next(tokens)
+                (tokenType, value, _) = current
+                assert tokenType is CaptureSemantic.literal # enforced by grammar
+                state.top().setAttribute(lexeme, pos, value=value)
+            else:
+                state.top().setAttribute(lexeme, pos)
+        
+        elif tokenType is CaptureSemantic.shorthandSymbol:
+            assert lookahead is CaptureSemantic.shorthandAttrib # enforced by grammar
+            current, _ = next(tokens)
+            (tokenType, value, _) = current
+            state.top().addShorthand(lexeme, value, pos)
+
         else:
-            print(tokenType, repr(lexeme), lookahead)
+            raise BachSemanticError("Unexpected %s" % tokenType, state, pos)
 
     return state.root().toTuple()
 

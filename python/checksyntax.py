@@ -39,9 +39,6 @@ args = ap.parse_args()
 # if you like the default behaviour; the parser can cope with either).
 fp = io.TextIOWrapper(sys.stdin.buffer, encoding=args.encoding, newline='')
 
-try:
-    tree = bach.parse(fp)
-    print(repr(tree))
-except bach.BachError as e:
-    print(e)
+tree = bach.parse(fp)
+print(repr(tree))
 

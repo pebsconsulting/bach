@@ -5,19 +5,19 @@ document
 .foo bar.baz.data-foo
     #foo
     foo="bar"
-    .bar"bar"
-    bar
+    .bar
+    "bar"
     baz
     a="boz"
     note:   "this is a note"
     
     "foo"
 
-    (foo "te\\st" bar="bar" fa f bar="bar")
+    (foo "te\\st" bar="bar" fa f bar2="bar")
 
     (f)
-    #abc="123"
-    ="bar"="baz"
+    #abc
+    "123"
     
 "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus at viverra
 risus. Phasellus ut leo id est tincidunt malesuada in id ante. Mauris a
