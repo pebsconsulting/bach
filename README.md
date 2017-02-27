@@ -16,6 +16,10 @@ as a succinct generator for HTML, as a command language (similar to
 [McCarthy 1982](http://www-formal.stanford.edu/jmc/cbcl2/cbcl2.html)), or as a text-based
 data interchange format.
 
+Bach is (by design) less powerful than most other data-interchange formats,
+such as JSON. Bach is exactly as powerful as it needs to be, and no more. This
+makes it easy to work with.
+
 
 ## At A Glance
 
