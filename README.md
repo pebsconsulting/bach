@@ -45,7 +45,7 @@ Bach documents are parseable in linear time to the length of the input and one
 byte of lookahead i.e. with an LL(1) parser.
 
 
-## Example
+## Examples
 
 How best to structure a document depends on your application domain.
 
