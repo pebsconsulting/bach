@@ -12,6 +12,8 @@ document
     note:   "this is a note"
     
     "foo"
+    foobar
+    .abc
 
     (foo "te\\st" bar="bar" fa f bar2="bar")
 

@@ -70,9 +70,9 @@ class BachSemanticError(BachParseError):
         line, col, offset = pos
         xtra = ''
         if state and bach.debug:
-            xtra = 'Parser state: %s\n' % repr(state.root())
-        super().__init__("%s at line %d column %d (character %d).\n%sHelp: %s" % \
-            (message, line, col, offset, xtra, 'None'))
+            xtra = '\nParser state: %s' % repr(state.root())
+        super().__init__("%s at line %d column %d (character %d).%s" % \
+            (message, line, col, offset, xtra))
         self.lineno = line
         self.column = col
         self.offset = offset
@@ -565,6 +565,9 @@ class Document:
         self.shorthand  = {}
         self.attributes = {}
         self.contents   = []
+        self.attribCount  = 0
+        self.literalCount = 0
+        self.subdocCount  = 0
     
     @profile
     def setLabel(self, s, pos):
@@ -574,23 +577,60 @@ class Document:
             raise BachParseLimitError("Label name length limit exceeded", 'max_label_name_len', pos);
         
         self.label = s
+        self.literalCount += 1
     
     @profile
     def setAttribute(self, s, pos, value=None):
+        if len(s) > bach.max_attribute_name_len:
+            raise BachParseLimitError("attribute name length limit exceeded", 'max_attribute_name_len', pos);
+    
         if s in self.attributes:
             raise BachSemanticError("Duplicate attribute %s in document %s" % (repr(s), repr(self.label)), None, pos)
+        
+        if value and len(value) > bach.max_attribute_value_len:
+            raise BachParseLimitError("attribute value length limit exceeded", 'max_attribute_value_len', pos)
+        
+        if self.attribCount >= bach.max_attributes_per_subdoc:
+            raise BachParseLimitError("maximum number of attributes in this (sub)document reached", 'max_attributes_per_subdoc', pos)
+        
         self.attributes[s] = value
+        self.attribCount += 1
     
     @profile
     def addShorthand(self, symbol, value, pos):
         assert symbol in TerminalSet.ss
-        if not symbol in self.shorthand:
+        if symbol in self.shorthand:
+            if value in self.shorthand[symbol]:
+                raise BachSemanticError("Duplicate shorthand attribute %s in document %s" % (repr(symbol+value), repr(self.label)), None, pos)
+        else:
             self.shorthand[symbol] = []
+        
+        if len(value) > bach.max_attribute_name_len:
+            raise BachParseLimitError("attribute name length limit exceeded", 'max_attribute_name_len', pos)
+        
+        if self.attribCount >= bach.max_attributes_per_subdoc:
+            raise BachParseLimitError("maximum number of attributes in this (sub)document reached", 'max_attributes_per_subdoc', pos)
+        
         self.shorthand[symbol].append(value)
+        self.attribCount += 1
     
     @profile
     def addLiteral(self, s, pos):
+        if len(s) > bach.max_literal_value_len:
+            raise BachParseLimitError("literal value length limit exceeded", 'max_literal_value_len', pos)
+        if self.literalCount >= bach.max_literals_per_subdoc:
+            raise BachParseLimitError("Maximum number of literals exceeded in document %s" % repr(self.label), 'max_literals_per_subdoc', pos)
+        
         self.contents.append(s)
+        self.literalCount += 1
+    
+    @profile
+    def addSubdoc(self, d, pos):
+        if self.subdocCount >= bach.max_subdocuments_per_subdoc:
+            raise BachParseLimitError("Maximum number of subdocuments exceeded in document %s" % repr(self.label), 'max_subdocuments_per_subdoc', pos)
+        
+        self.contents.append(d)
+        self.subdocCount += 1
     
     @profile
     def toTuple(self):
@@ -607,6 +647,20 @@ class ParserState:
     def __init__(self):
         # a tree to keep track of documents
         self.stack = [Document()]
+        self.numLiterals = 0
+        self.numSubdocs  = 0
+    
+    @profile
+    def setLabel(self, s, pos):
+        self.top().setLabel(s, pos)
+    
+    @profile
+    def addLiteral(self, s, pos):
+        if self.numLiterals >= bach.max_literals_globally:
+            raise BachParseLimitError("maximum global literal limit exceeded", 'bach.max_literals_globally', pos)
+    
+        self.top().addLiteral(s, pos)
+        self.numLiterals += 1
     
     @profile
     def root(self):
@@ -626,10 +680,16 @@ class ParserState:
         self.stack.pop()
     
     @profile
-    def push(self):
+    def push(self, pos):
+        if len(self.stack) >= bach.max_subdocument_depth:
+            raise BachParseLimitError("maximum document nesting depth exceeded", 'max_subdocument_depth', pos)
+        if self.numSubdocs >= bach.max_subdocuments_globally:
+            raise BachParseLimitError("maximum global subdocument limit exceeded", 'max_subdocuments_globally', pos)
+    
         d = Document()
-        self.top().contents.append(d)
+        self.top().addSubdoc(d, pos)
         self.stack.append(d)
+        self.numSubdocs += 1
 
 
 @profile
@@ -648,11 +708,11 @@ def parse(stream):
         if lookahead: lookahead = lookahead[0] # only need the type
         
         if tokenType is CaptureSemantic.label:
-            state.top().setLabel(lexeme, pos)
+            state.setLabel(lexeme, pos)
         elif tokenType is CaptureSemantic.literal:
-            state.top().addLiteral(lexeme, pos)
+            state.addLiteral(lexeme, pos)
         elif tokenType is CaptureSemantic.subdocStart:
-            state.push()
+            state.push(pos)
         elif tokenType is CaptureSemantic.subdocEnd:
             state.pop()
         
