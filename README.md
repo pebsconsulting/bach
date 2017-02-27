@@ -150,12 +150,20 @@ standards of a pure-Python parser, it is hoped that faster implementations
 suitable for real-time, probably written at least partly in C, will shortly
 become available.
 
-A full formal grammar, given in Greibach Normal Form with lookahead and
-semantic notation, is given in the source code as an array of tuples.
+A full formal grammar is given at [parse.py](python/bach/parse.py) as an array
+of tuples. The rules given in Greibach Normal Form with additional lookahead
+and semantic notation.
 
 Tawesoft Ltd is committed to supporting Bach as an Open Standard. At this early
 stage we invite feedback and comments but, if and as soon as the need arises,
 we are keen to see democratic and inclusive stewardship of the language.
+
+
+## Name
+
+Bach is named for the Welsh term of endearment (literally "small") and as
+tribute to the work of computer scientist
+[Sheila Greibach](https://en.wikipedia.org/wiki/Sheila_Greibach).
 
 
 ## License
