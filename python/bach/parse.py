@@ -42,11 +42,39 @@ else:
 
 class BachError(Exception): pass
 class BachRuntimeError(BachError): pass
-class BachSyntaxError(BachRuntimeError):
-    def __init__(self, message,  pos):
+class BachSecurityError(BachRuntimeError): pass
+
+class BachSecurityLimitError(BachSecurityError):
+    def __init__(self, message, rule, pos):
         line, col, offset = pos
-        super().__init__("%s at line %d column %d (character %d)" % \
-            (message, line, col, offset))
+        super().__init__("%s (%s is %d) at line %d column %d (character %d).\n" % \
+            (message, rule, getattr(bach, rule), line, col, offset))
+        self.lineno = line
+        self.column = col
+        self.offset = offset
+
+class BachParseError(BachRuntimeError): pass
+
+class BachSyntaxError(BachParseError):
+    def __init__(self, message, state, pos):
+        line, col, offset = pos
+        xtra = ''
+        if bach.debug:
+            xtra = 'Lexter state: %s\n' % repr(state.stack)
+        super().__init__("%s at line %d column %d (character %d).\n%sHelp: %s" % \
+            (message, line, col, offset, xtra, lexerErrorHint(state)))
+        self.lineno = line
+        self.column = col
+        self.offset = offset
+
+class BachSemanticError(BachParseError):
+    def __init__(self, message, state, pos):
+        line, col, offset = pos
+        xtra = ''
+        if bach.debug:
+            xtra = 'Parser state: %s\n' % repr(state.stack)
+        super().__init__("%s at line %d column %d (character %d).\n%sHelp: %s" % \
+            (message, line, col, offset, xtra, 'None'))
         self.lineno = line
         self.column = col
         self.offset = offset
@@ -97,6 +125,8 @@ class ProductionSymbol(Enum):
     SD     = 16 # Subdocument (i.e. past function label)
     LSD    = 17 # Literal followed vy rest of SD
     ALSD   = 18 # Assignment followed by LSD
+    DSH    = 19 # Document shorthand attribute
+    SDSH   = 20 # Subdocument shorthand attribute
     
     @staticmethod
     @profile
@@ -107,13 +137,15 @@ class ProductionSymbol(Enum):
 @unique
 class CaptureSemantic(Enum):
     """Semantics captured at the level of the grammar"""
-    none        = 0
-    label       = 1
-    attribute   = 2
-    literal     = 3
-    assign      = 4
-    subdocStart = 5
-    subdocEnd   = 6
+    none            = 0
+    label           = 1
+    attribute       = 2
+    literal         = 3
+    assign          = 4
+    subdocStart     = 5
+    subdocEnd       = 6
+    shorthandSymbol = 7
+    shorthandAttrib = 8
     
     @staticmethod
     @profile
@@ -250,11 +282,10 @@ def buildProductionRules(rules):
 
 @profile
 def productionRulesBySymbol(ruledata, symbol):
-    """Generator function that yields only rules starting with a certain symbol"""
+    """Returns an iterable of rules starting with a certain symbol"""
     index, rules = ruledata
     left, right = index[symbol]
-    for i in range(left, right+1):
-        yield rules[i]
+    return rules[left:right+1]
 
 
 ProductionRules =  buildProductionRules([\
@@ -333,6 +364,19 @@ ProductionRules =  buildProductionRules([\
     # D => ws, lookahead EOF - special case of end of document
     ('D',       'ϵws',      'ϵEof',     [],                     [], 'none'),
     
+    # --- "Shorthand" attributes
+    # D => ss DSH D
+    ('D',       'ϵss',      '∉sc',      ['DSH', 'D'],           ['captureStart', 'captureEnd', 'capture'],   'shorthandSymbol'),
+    # DSH => ¬sc
+    ('DSH',     '∉sc',      'ϵsc',      [],                     ['captureStart', 'captureEnd', 'capture'],   'shorthandAttrib'),
+    # DSH => ¬sc XSCC
+    ('DSH',     '∉sc',      '∉sc',      ['XSCC'],               ['captureStart', 'capture'],                 'shorthandAttrib'),
+    # SD => ss SDSH SD
+    ('SD',      'ϵss',      '∉sc',      ['SDSH', 'SD'],         ['captureStart', 'captureEnd', 'capture'],   'shorthandSymbol'),
+    # SDSH => ¬sc
+    ('SDSH',    '∉sc',      'ϵsc',      [],                     ['captureStart', 'captureEnd', 'capture'],   'shorthandAttrib'),
+    # SDSH => ¬sc XSCC
+    ('SDSH',    '∉sc',      '∉sc',      ['XSCC'],               ['captureStart', 'capture'],                 'shorthandAttrib'),
     
     # --- Attributes - standalone
     # (may be the start of a pair, but that can't yet be detected)
@@ -427,19 +471,18 @@ ProductionRules =  buildProductionRules([\
 ])
 
 
-
 class LexerState:
     @profile
     def __init__(self):
-        # a stack to keep track of
-        # 1. the current production symbol
-        # 2. the rule chosen
-        # 3. how much of the rule we've done
+        # a stack to keep track of production symbols
         self.stack = [ProductionSymbol.S]
     
     @profile
     def top(self):
-        return self.stack[-1]
+        try:
+            return self.stack[-1]
+        except IndexError:
+            return None
     
     @profile
     def pop(self):
@@ -451,11 +494,13 @@ class LexerState:
         #print("Push Symbol %s" % nextSymbol)
         self.stack.append(nextSymbol)
 
+    @profile
+    def contains(self, symbol):
+        return (symbol in self.stack)
+
 
 @profile
 def tokenise(stream):
-    yield (CaptureSemantic.subdocStart, '(')
-    
     state = LexerState()
     
     # a counter for line, col, absolute offset of the stream (counting from 1)
@@ -476,12 +521,8 @@ def tokenise(stream):
         
         match = None
         
-        try:
-            top = state.top()
-        except IndexError:
-            raise BachSyntaxError("Expected: end of file", (line, col, offset))
-        symbol = top
-        #print("symbol=%s, current=%s, lookahead=%s, pos=%s, d %d" % (repr(symbol), repr(current), repr(lookahead), pos, len(state.stack)))
+        symbol = state.top()
+        assert symbol
     
         for rule in productionRulesBySymbol(ProductionRules, symbol):
             ruleSymbol, ruleCurrentIn, ruleCurrentNotIn, ruleLookaheadIn, \
@@ -501,7 +542,7 @@ def tokenise(stream):
                     if ParserRuleFlag.containsCapture(ruleFlags):
                         capture.append(current)
                     if ParserRuleFlag.containsCaptureEnd(ruleFlags):
-                        yield (currentSemantic, ''.join(capture))
+                        yield (currentSemantic, ''.join(capture), (line, col, offset))
                 
                 state.pop()
                 
@@ -512,16 +553,123 @@ def tokenise(stream):
                 continue # NOTE could verify no other rules match
         
         if match is None:
-            raise BachSyntaxError("unexpected "+repr(current), (line, col, offset))
-            return
+            raise BachSyntaxError("unexpected "+repr(current), state, (line, col, offset))
     
-    yield (CaptureSemantic.subdocEnd, ')')
+    if state.top() not in [ProductionSymbol.D, None]:
+        raise BachSyntaxError("unexpected end of file", state, (line, col, offset))
+
+
+class Document:
+    @profile
+    def __init__(self):
+        # document = (label, [shorthand], {attributes}, [contents])
+        self.label      = None
+        self.shorthand  = []
+        self.attributes = {}
+        self.contents   = []
+    
+    @profile
+    def setLabel(self, s, pos):
+        assert self.label is None
+        
+        if len(s) > bach.max_label_name_len:
+            raise BachSecurityLimitError("Label name length limit exceeded", 'max_label_name_len', pos);
+        
+        self.label = s
+    
+    @profile
+    def toTuple(self):
+        return (self.label, self.shorthand, self.attributes, self.contents)
+    
+    @profile
+    def __repr__(self):
+        return repr(self.toTuple())
+        
+
+
+class ParserState:
+    @profile
+    def __init__(self):
+        # a tree to keep track of documents
+        self.stack = [Document()]
+    
+    @profile
+    def root(self):
+        return self.stack[0]
+
+    @profile
+    def top(self):
+        try:
+            return self.stack[-1]
+        except IndexError:
+            return None
+    
+    @profile
+    def pop(self):
+        top = self.top()
+        top = top.toTuple()
+        self.stack.pop()
+    
+    @profile
+    def push(self):
+        d = Document()
+        self.top().contents.append(d)
+        self.stack.append(d)
+
 
 
 @profile
 def parse(stream):
-    for (tokenType, lexeme) in tokenise(stream):
-        print(tokenType, repr(lexeme))
+    tokens = pairwise(tokenise(stream))
+    
+    state = ParserState()
+    
+    while True:
+        try:
+            current, lookahead = next(tokens)
+        except StopIteration:
+            break
+
+        (tokenType, lexeme, pos) = current        
+        if lookahead: lookahead = lookahead[0] # only need the type
         
+        if tokenType is CaptureSemantic.label:
+            state.top().setLabel(lexeme, pos)
+        elif tokenType is CaptureSemantic.subdocStart:
+            state.push()
+        elif tokenType is CaptureSemantic.subdocEnd:
+            state.pop()
+        else:
+            print(tokenType, repr(lexeme), lookahead)
+
+    return state.root().toTuple()
+
+
+@profile
+def lexerErrorHint(state):
+    if state.contains(ProductionSymbol.S):
+        return \
+"Parsing failed before the start of a valid document could be found. A Bach \
+document must start with a left-aligned label, optionally preceeded by \
+empty lines or left-aligned #-style comments."
+
+    if state.top() in [ProductionSymbol.LSQ, ProductionSymbol.LDQ, ProductionSymbol.LBQ]:
+        return \
+"Parsing failed while looking at a string literal, probably because of a missing closing quote."
+
+    if state.top() in [ProductionSymbol.LSQESC, ProductionSymbol.LDQESC, ProductionSymbol.LBQESC]:
+        return \
+"Invalid escape sequence inside a string literal. Use backslash to escape the backslash character or the closing quote character only."
+
+    if state.top() in [ProductionSymbol.LD, ProductionSymbol.ALD, ProductionSymbol.LSD, ProductionSymbol.ALSD]:
+        return \
+"Invalid attribute pair. Remember that the right hand side of an attribute pair must be a string literal."
+
+    if state.top() is ProductionSymbol.SD:
+        return \
+"Parsing failed before the end of a subdocument, probably because of a missing closing parenthesis."
+
+    return "No extra help is available for this error state, sorry."
+
 
 

@@ -33,14 +33,15 @@ ap.add_argument('-e', '--encoding',  default='utf-8',
 
 args = ap.parse_args()
 
-# Get the standard input binary buffer and wrap it so it decodes into a
-# stream of Unicode characters from the specified encoding. We do this without
-# Python translating any linebreaks (omit the newline argument if you like the
-# default behaviour; the parser can cope with either).
+# Get the standard input binary buffer and wrap it in a file-object so that it
+# decodes into a stream of Unicode characters from the specified encoding. We
+# do this without Python translating any linebreaks (omit the newline argument
+# if you like the default behaviour; the parser can cope with either).
 fp = io.TextIOWrapper(sys.stdin.buffer, encoding=args.encoding, newline='')
 
-# We now have a file-object (https://docs.python.org/3.4/glossary.html#term-file-object)
-# that can be read a valid Unicode character at a time.
-bach.parse(fp)
-
+try:
+    tree = bach.parse(fp)
+    print(repr(tree))
+except bach.BachError as e:
+    print(e)
 

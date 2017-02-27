@@ -21,7 +21,33 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# If True, syntax errors also print out the lexer state stack
+debug=True
+
+# If True, enables the @profile decorator from builtins.profile
+# for use with profiling tools e.g. kernprof
 profile=False
+
+# Internal buffer size, keep as 64k
 bufsz=64*1024
-from .parse import parse
+
+# Sanity settings to avoid malicious inputs
+# -- parse speed is always linear to the input size,
+# -- but memory consumption isn't
+
+max_label_name_len         =           127
+max_attribute_name_len     =           127 
+
+max_attribute_value_len    =       64*1024
+max_literal_value_len      =   4*1024*1024
+
+max_attributes_per_label   =          1024
+max_subdocuments_per_label =        8*1024
+max_literals_per_label     =        8*1024
+
+max_subdocuments_globally  =       64*1024
+max_literals_globally      =      256*1024
+
+
+from .parse import parse, BachError
 
