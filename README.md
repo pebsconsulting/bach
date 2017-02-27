@@ -99,17 +99,15 @@ Here is another example, in a more hierarchical structure:
         (p "The aardvark is a medium-sized, burrowing, nocturnal mammal native to Africa")
         (figure
             caption="Basic Aadvark facts"
-            (table
-                (row
-                    (cell.title "Scientific name")  (cell "Orycteropus afer")
-                    (cell.title "Mass (adult")      (cell "40 to 65 kg")
-                    (cell.title "Gestation period") (cell "213 days")
-                )
+            (table columns="2"
+                (cell.title "Scientific name")  (cell "Orycteropus afer")
+                (cell.title "Mass (adult)")     (cell "40 to 65 kg")
+                (cell.title "Gestation period") (cell "213 days")
             )
         )
         (figure
             caption="Aardvark Taxonomy"
-            src="https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=584927#null"
+            reference="https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=584927#null"
             (taxinomy
                 (kingdom "Animalia"
  	                (subkingdom "Bilateria"
