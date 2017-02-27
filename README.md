@@ -2,28 +2,42 @@
 
 **A general-purpose semantic document markup language**
 
-This repository contains the reference implementation for Python >= 3.4
+*This repository contains the reference implementation for Python >= 3.4*
 
 ![bach logo](logo-640.png)
 
 
-## At-A-Glance
+Bach is for anyone writing structured semantic text that is parsed into a
+data structure to be transformed programmatically.
+
+Our key use cases for Bach are multilingual documents, technical
+documentation and static website generators, though Bach is also suitable
+as a succinct generator for HTML, as a command language, or as a text-based
+data interchange format.
+
+
+## At A Glance
 
 A Bach document is a tuple:
 
     document = (label, shorthand-attributes, attributes, contents)
 
-The *label* is a string with has domain-specific semantics. You might like to think of it as a function name.
+**label:** a string with domain-specific semantics. You might like to think of
+it as a function name.
 
-The *shorthand-attributes* is a mapping of special shorthand symbol characters to an array of attribute value strings.
+**shorthand-attributes:** a mapping of special shorthand symbol characters to
+an array of attribute value strings.
 
-The *attributes* is a mapping of attribute name strings to attribute value strings.
+**attributes:** a mapping of attribute name strings to attribute value strings.
 
-The *contents* is an ordered collection of zero or more string literals and/or Bach documents recursively.
+**contents:** an ordered collection of zero or more string literals and/or
+(sub)documents recursively.
 
-Documents written in the Bach markup language are efficiently parsed into this structure with an LL(1) parser.
+Once parsed into this structure, Bach documents can be easily manipulated using
+code.
 
-Once in this structure, Bach documents can be easily manipulated using code.
+Bach documents are parseable in linear time to the length of the input and one
+byte of lookahead i.e. with an LL(1) parser.
 
 
 ## Example
@@ -69,7 +83,9 @@ How best to structure a document depends on your application domain. Here is one
 
 # Syntax and Semantics
 
-A Bach document is a non-empty string that may start with #-style comments, followed by a label, then optionally attributes, string literals, and subdocuments in any order. Subdocuments may not contain #-style comments.
+A Bach document is a non-empty string that may start with #-style comments,
+followed by a label, then optionally attributes, string literals, and
+subdocuments in any order. Subdocuments may not contain #-style comments.
 
 Special characters are
 
@@ -77,7 +93,8 @@ Special characters are
 
 A label is any string of non-special characters.
 
-A string literal is quoted by single, double, or bracket quotes. Closing quotes may be escaped with backslash. A literal backlash must also be escaped.
+A string literal is quoted by single, double, or bracket quotes. Closing quotes
+may be escaped with backslash. A literal backlash must also be escaped.
 
     'a string'
     "a string"
@@ -100,13 +117,15 @@ This is quite similar to the syntax of CSS selectors. For example:
 
     (anElement#someId.classOne.classTwo enabled title="An Example Element")
 
-Full attributes are any string of non-special characters followed by an equals or colon followed by a string literal. Whitespace is optional.
+Full attributes are any string of non-special characters followed by an equals
+or colon followed by a string literal. Whitespace is optional.
 
     anAttribute="a value"
     anAttribute: "a value"
     anAttribute = "a value"
 
-The assignment may be ommitted, in which case the attribute is present but with a value such as `Null` or `None` (as distrinct from the empty string).
+The assignment may be ommitted, in which case the attribute is present but with
+a value such as `Null` or `None` (as distrinct from the empty string).
 
     (item anAttributeWithNoValue)
 
@@ -121,18 +140,25 @@ No duplicate shorthand attributes with the same symbol are permitted in any (sub
 
 ## Open Standard
 
-A full formal grammar, given in Greibach Normal Form with lookahead and semantic notation, is given in the source code.
+This is the Python reference implementation of Bach. While efficient by the
+standards of a pure-Python parser, it is hoped that faster implementations
+suitable for real-time, probably written at least partly in C, will shortly
+become available.
 
-This is the Python reference implementation of Bach. While efficient by the standards of a pure-Python parser, it is hoped that faster implementations, probably written at least partly in C, will become available.
+A full formal grammar, given in Greibach Normal Form with lookahead and
+semantic notation, is given in the source code as an array of tuples.
 
-Tawesoft Ltd is committed to supporting Bach as an Open Standard. At this early stage we invite feedback and comments but, if and as soon as the need arises, we are keen to see democratic and inclusive stewardship of the language.
+Tawesoft Ltd is committed to supporting Bach as an Open Standard. At this early
+stage we invite feedback and comments but, if and as soon as the need arises,
+we are keen to see democratic and inclusive stewardship of the language.
 
 
 ## License
 
+This license applies to the Bach Python 3.4 Reference Implementation, and
+associated documentation. We do not claim to copyright Bach *as a language*.
+
     Bach - a general-purpose semantic document markup language
-    
-    Python Reference Implementation
 
     Copyright © 2017 Ben Golightly <ben@tawesoft.co.uk>
     Copyright © 2017 Tawesoft Ltd <opensource@tawesoft.co.uk>
