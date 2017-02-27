@@ -124,8 +124,7 @@ Here is another example, in a more hierarchical structure:
                                                         (order "Tubulidentata" by="Huxley, 1872"
                                                             (family "Orycteropodidae" by="Gray, 1821"
                                                                 (genus "Orycteropus G." by="Cuvier, 1798"
-                                                                    (species "Orycteropus afer" by="Pallas, 1766"
-                ))))))))))))))
+                                                                    (species "Orycteropus afer" by="Pallas, 1766"))))))))))))))
             )
         )
     )
