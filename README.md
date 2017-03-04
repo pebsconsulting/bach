@@ -140,7 +140,7 @@ comments, but may contain #-style shorthand attributes instead.
 
 Special characters are
 
-    #=:\t\r\n ()[]{}<>"'\\/
+    #=:\t\r\n ()[]{}<>"'\\
 
 Special characters used for shorthand attributes are given to the parser as a
 mapping from shorthand symbols to attribute names.
