@@ -214,7 +214,8 @@ tribute to the work of computer scientist
 ## License
 
 This license applies to the Bach Python 3.4 Reference Implementation, and
-associated documentation. We do not claim to copyright Bach *as a language*.
+associated documentation. We do not claim to copyright Bach *as a language*;
+other implementations are encouraged!
 
     Bach - a general-purpose semantic document markup language
 
