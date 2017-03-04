@@ -138,9 +138,9 @@ followed by a label, then optionally attributes, shorthand attributes, string
 literals, and subdocuments in any order. Subdocuments may not contain #-style
 comments, but may contain #-style shorthand attributes instead.
 
-Special characters are
+Special characters are space, backslash, and
 
-    #=:\t\r\n ()[]{}<>"'\\
+    #=:\t\r\n()[]{}<>"'
 
 Special characters used for shorthand attributes are given to the parser as a
 mapping from shorthand symbols to attribute names.
