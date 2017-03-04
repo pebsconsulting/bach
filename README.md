@@ -13,8 +13,7 @@ data structure to be transformed programmatically.
 Our key use cases for Bach are multilingual documents, technical
 documentation, and static website generators. Bach is also suitable
 as a succinct generator for HTML, as a command language (similar to
-[McCarthy 1982](http://www-formal.stanford.edu/jmc/cbcl2/cbcl2.html)), or as a text-based
-data interchange format.
+[McCarthy 1982](http://www-formal.stanford.edu/jmc/cbcl2/cbcl2.html)).
 
 
 ## At A Glance
