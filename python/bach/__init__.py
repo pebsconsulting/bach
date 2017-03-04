@@ -43,7 +43,7 @@ max_attribute_value_len     =      256*1024
 max_literal_value_len       =   4*1024*1024
 max_lexeme_len              =   4*1024*1024
 
-max_attributes_per_subdoc   =           256
+max_attributes_per_subdoc   =          1024
 max_subdocuments_per_subdoc =       32*1024
 max_literals_per_subdoc     =       32*1024
 

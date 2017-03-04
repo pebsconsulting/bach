@@ -1,25 +1,10 @@
-# Bach - a general-purpose semantic document markup language
-#
-# Copyright © 2017 Ben Golightly <ben@tawesoft.co.uk>
-# Copyright © 2017 Tawesoft Ltd <opensource@tawesoft.co.uk>
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction,  including without limitation the rights
-# to use,  copy, modify,  merge,  publish, distribute, sublicense,  and/or sell
-# copies  of  the  Software,  and  to  permit persons  to whom  the Software is
-# furnished to do so, subject to the following conditions:
+"""
+Parses a Bach document and prints the result as a Python object
 
-# The above copyright notice  and this permission notice  shall be  included in
-# all copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED  "AS IS",  WITHOUT WARRANTY OF ANY KIND,  EXPRESS OR
-# IMPLIED,  INCLUDING  BUT  NOT LIMITED TO THE WARRANTIES  OF  MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE  AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-# AUTHORS  OR COPYRIGHT HOLDERS  BE LIABLE  FOR ANY  CLAIM,  DAMAGES  OR  OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
+Usage:
+    cat examples/simple.bach | python3 python/checksyntax.py
+    cat examples/shorthand.bach | python3 python/checksyntax.py -s "#id" ".class"
+"""
 
 import argparse
 import io
@@ -30,6 +15,8 @@ ap = argparse.ArgumentParser(
     description='Check the syntax of a Bach document from standard input')
 ap.add_argument('-e', '--encoding',  default='utf-8',
     help='specify the input character encoding (defaults to utf-8)')
+ap.add_argument('-s', '--shorthand', nargs='*', default=[],
+    help='add a Shorthand argument (e.g. -s "#id" ".class")')
 
 args = ap.parse_args()
 
@@ -39,6 +26,15 @@ args = ap.parse_args()
 # if you like the default behaviour; the parser can cope with either).
 fp = io.TextIOWrapper(sys.stdin.buffer, encoding=args.encoding, newline='')
 
-tree = bach.parse(fp)
+shorthandMapping = {}
+
+# Convert the commandline arguments into a dict {shorthand: longhand}
+for i in args.shorthand:
+    assert len(i) >= 2
+    left = i[0]
+    right = i[1:]
+    shorthandMapping[left] = right
+
+tree = bach.parse(fp, shorthandMapping)
 print(repr(tree))
 

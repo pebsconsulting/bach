@@ -16,27 +16,24 @@ as a succinct generator for HTML, as a command language (similar to
 [McCarthy 1982](http://www-formal.stanford.edu/jmc/cbcl2/cbcl2.html)), or as a text-based
 data interchange format.
 
-Bach is (by design) less powerful than most other data-interchange formats,
-such as JSON. Bach is exactly as powerful as it needs to be, and no more. This
-makes it easy to work with.
-
 
 ## At A Glance
 
 A Bach document is a tuple:
 
-    document = (label, shorthand-attributes, attributes, contents)
+    document = (label, attributes, contents)
 
 **label:** a string with domain-specific semantics. You might like to think of
 it as a function name.
 
-**shorthand-attributes:** a mapping of special shorthand symbol characters to
-an array of attribute value strings.
-
-**attributes:** a mapping of attribute name strings to attribute value strings.
+**attributes:** a mapping of attribute name strings to an array of attribute
+value strings. Values appear in the order they are parsed from left to right.
 
 **contents:** an ordered collection of zero or more string literals and/or
 (sub)documents recursively.
+
+A special "shorthand" syntax can expand attributes like `.classOne` into
+`class="classOne"`. The shorthand syntax is fully configurable at parse-time.
 
 Bach documents are parseable in linear time to the length of the input and one
 byte of lookahead i.e. with an LL(1) parser.
@@ -137,14 +134,19 @@ Here is another example, in a more hierarchical structure:
 # Syntax and Semantics
 
 A Bach document is a non-empty string that may start with #-style comments,
-followed by a label, then optionally attributes, string literals, and
-subdocuments in any order. Subdocuments may not contain #-style comments.
+followed by a label, then optionally attributes, shorthand attributes, string
+literals, and subdocuments in any order. Subdocuments may not contain #-style
+comments, but may contain #-style shorthand attributes instead.
 
 Special characters are
 
     #.*^?!@|~$=:\t\r\n ()[]{}<>"'\\/
 
-A label is any string of non-special characters.
+Special characters used for shorthand attributes are given to the parser as a
+mapping from shorthand symbols to attribute names.
+
+A label is any string of non-special characters appearing as the first
+thing in a document or subdocument.
 
 A string literal is quoted by single, double, or bracket quotes. Closing quotes
 may be escaped with backslash. A literal backlash must also be escaped.
@@ -156,9 +158,8 @@ may be escaped with backslash. A literal backlash must also be escaped.
     "a \" \\ string"
     [a \] \\ string]
 
-A shorthand attribute starts with a special shorthand seperator:
-
-    #.*^?!@|~$
+A shorthand attribute starts with a special shorthand character specified
+earlier.
 
 A shorthand attribute then is followed by any string of non-special characters.
 
@@ -185,10 +186,6 @@ a value such as `Null` or `None` (as distrinct from the empty string).
 Subdocuments start and end with brackets. They are always non-empty.
 
     (document "a literal" (subdocument) "another literal")
-
-No duplicate full attributes are permitted in any (sub)document.
-
-No duplicate shorthand attributes with the same symbol are permitted in any (sub)document.
 
 
 ## Open Standard

@@ -1,0 +1,22 @@
+# Usage:
+# cat examples/shorthand.bach | python3 python/checksyntax.py -s "#id" ".class" "/flag"
+
+document
+
+(section
+    (title "Hello World!")
+    (p "This is a simple document with shorthand attributes.")
+    
+    (section
+        #ExampleID
+        .classOne
+        class="classTwo"
+        /flagOne
+        flag: "flagTwo"
+        
+        (title "This is a Subsection.")
+        (p "It has an ID of \"ExampleID\".")
+        (p [It has classes of "classOne" and "classTwo".])
+        (p 'It also has flags "flagOne" and "flagTwo"')
+    )
+)

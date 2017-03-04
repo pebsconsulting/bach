@@ -165,10 +165,19 @@ class TerminalSet():
     ws    = '\t\r\n '    # whitespace
     lf    = '\n'         # linefeed
     bs    = '\\'         # backslash
-    ss    = '#.*^?!@|~$' # "shorthand separator"
-    sc    = '#.*^?!@|~$=:\t\r\n ()[]{}<>"\'\\/' # special character
+    _sc   = '#=:\t\r\n ()[]{}<>"\'\\' # special characters (excl. shorthand separators)
+    _dss  = '=:\t\r\n ()[]{}<>"\'\\'  # disallowed shorthand separators
     oqt   = '"\'['       # opening quote
     asgn  = '=:'         # assignment characters
+    
+    @profile
+    def __init__(self, shorthandSeparators):
+        for c in shorthandSeparators:
+            if c in TerminalSet._dss:
+                raise BachRuntimeError("Shorthand separator symbol %s is not allowed (reserved: %s)" % (repr(c), repr(TerminalSet._dss)))
+        
+        self.ss = ''.join(shorthandSeparators)
+        self.sc = TerminalSet._sc + self.ss
     
     @staticmethod
     @profile
@@ -183,7 +192,9 @@ class TerminalSet():
     
     @staticmethod
     @profile
-    def fromString(s):
+    def fromString(s, customTerminalSet):
+        if s == 'sc': return customTerminalSet.sc
+        if s == 'ss': return customTerminalSet.ss
         return getattr(TerminalSet, s)
 
 
@@ -221,7 +232,7 @@ class ParserRuleFlag(Enum):
 
 
 @profile
-def buildProductionRules(rules):
+def buildProductionRules(rules, customTerminalSet):
     """Given grammar rules specified using a shorthand notation, expand each
        into the proper form, then sort and index for efficient processing."""
    
@@ -230,15 +241,14 @@ def buildProductionRules(rules):
         # the name of a TerminalSet, or a plain sequence of characters,
         # return a 2-tuple: (inCharacterSet, notInCharacterSet) such that a
         # character matching both conditions satisfies the rule in our notation.
-    
-        if s and (s[0] == 'ϵ'):
+        if s[0] == 'ϵ':
             try:
-                return (TerminalSet.fromString(s[1:]), TerminalSet.Empty)
+                return (TerminalSet.fromString(s[1:], customTerminalSet), TerminalSet.Empty)
             except AttributeError:
                 return (s[1:], TerminalSet.Empty)
-        elif s and (s[0] == '∉'):
+        elif s[0] == '∉':
             try:
-                return (TerminalSet.All, TerminalSet.fromString(s[1:]))
+                return (TerminalSet.All, TerminalSet.fromString(s[1:], customTerminalSet))
             except AttributeError:
                 return (TerminalSet.All, s[1:])
         else:
@@ -286,7 +296,7 @@ def productionRulesBySymbol(ruledata, symbol):
     return rules[left:right+1]
 
 
-ProductionRules =  buildProductionRules([\
+ProductionRules = [\
     # These rules are very thorough because we are able to efficiently enforce
     # much of the semantics at the level of the language grammar itself.
     # All production rules are given in Greibach Normal Form, with one
@@ -466,7 +476,7 @@ ProductionRules =  buildProductionRules([\
     ('LSQESC',  'ϵ\\\'',    'ϵAll',     [],                     ['capture'],                                'none'),
     ('LDQESC',  'ϵ\\"',     'ϵAll',     [],                     ['capture'],                                'none'),
     ('LBQESC',  'ϵ\\]',     'ϵAll',     [],                     ['capture'],                                'none'),
-])
+]
 
 
 class LexerState:
@@ -498,8 +508,10 @@ class LexerState:
 
 
 @profile
-def tokenise(stream):
+def tokenise(stream, shorthandSymbols=[]):
     state = LexerState()
+    customTerminalSet = TerminalSet(shorthandSymbols)
+    rules = buildProductionRules(ProductionRules, customTerminalSet)
     
     # a counter for line, col, absolute offset of the stream (counting from 1)
     line, col, offset = (1, 0, 0)
@@ -522,7 +534,7 @@ def tokenise(stream):
         symbol = state.top()
         assert symbol
     
-        for rule in productionRulesBySymbol(ProductionRules, symbol):
+        for rule in productionRulesBySymbol(rules, symbol):
             ruleSymbol, ruleCurrentIn, ruleCurrentNotIn, ruleLookaheadIn, \
             ruleLookaheadNotIn, restOfRule, ruleFlags, emitSemantic = rule
             
@@ -564,7 +576,6 @@ class Document:
     def __init__(self):
         # document = (label, {shorthand}, {attributes}, [contents])
         self.label      = None
-        self.shorthand  = {}
         self.attributes = {}
         self.contents   = []
         self.attribCount  = 0
@@ -582,12 +593,9 @@ class Document:
         self.literalCount += 1
     
     @profile
-    def setAttribute(self, s, pos, value=None):
+    def addAttribute(self, s, pos, value=None):
         if len(s) > bach.max_attribute_name_len:
             raise BachParseLimitError("attribute name length limit exceeded", 'max_attribute_name_len', pos);
-    
-        if s in self.attributes:
-            raise BachSemanticError("Duplicate attribute %s in document %s" % (repr(s), repr(self.label)), None, pos)
         
         if value and len(value) > bach.max_attribute_value_len:
             raise BachParseLimitError("attribute value length limit exceeded", 'max_attribute_value_len', pos)
@@ -595,25 +603,10 @@ class Document:
         if self.attribCount >= bach.max_attributes_per_subdoc:
             raise BachParseLimitError("maximum number of attributes in this (sub)document reached", 'max_attributes_per_subdoc', pos)
         
-        self.attributes[s] = value
-        self.attribCount += 1
-    
-    @profile
-    def addShorthand(self, symbol, value, pos):
-        assert symbol in TerminalSet.ss
-        if symbol in self.shorthand:
-            if value in self.shorthand[symbol]:
-                raise BachSemanticError("Duplicate shorthand attribute %s in document %s" % (repr(symbol+value), repr(self.label)), None, pos)
-        else:
-            self.shorthand[symbol] = []
+        if not s in self.attributes:
+            self.attributes[s] = []
         
-        if len(value) > bach.max_attribute_name_len:
-            raise BachParseLimitError("attribute name length limit exceeded", 'max_attribute_name_len', pos)
-        
-        if self.attribCount >= bach.max_attributes_per_subdoc:
-            raise BachParseLimitError("maximum number of attributes in this (sub)document reached", 'max_attributes_per_subdoc', pos)
-        
-        self.shorthand[symbol].append(value)
+        self.attributes[s].append(value)
         self.attribCount += 1
     
     @profile
@@ -641,7 +634,7 @@ class Document:
             return x.toTuple()
         
         self.contents = list(filter(f, self.contents))
-        return (self.label, self.shorthand, self.attributes, self.contents)
+        return (self.label, self.attributes, self.contents)
     
     @profile
     def __repr__(self):
@@ -700,8 +693,8 @@ class ParserState:
 
 
 @profile
-def parse(stream):
-    tokens = pairwise(tokenise(stream))
+def parse(stream, shorthandMapping={}):
+    tokens = pairwise(tokenise(stream, shorthandMapping.keys()))
     
     state = ParserState()
     
@@ -729,15 +722,17 @@ def parse(stream):
                 current, _ = next(tokens)
                 (tokenType, value, _) = current
                 assert tokenType is CaptureSemantic.literal # enforced by grammar
-                state.top().setAttribute(lexeme, pos, value=value)
+                state.top().addAttribute(lexeme, pos, value=value)
             else:
-                state.top().setAttribute(lexeme, pos)
+                state.top().addAttribute(lexeme, pos)
         
         elif tokenType is CaptureSemantic.shorthandSymbol:
             assert lookahead is CaptureSemantic.shorthandAttrib # enforced by grammar
             current, _ = next(tokens)
-            (tokenType, value, _) = current
-            state.top().addShorthand(lexeme, value, pos)
+            (_, value, _) = current
+            attribName = shorthandMapping[lexeme] # enforced by grammar
+            assert type(attribName) is str 
+            state.top().addAttribute(attribName, pos, value=value)
 
         else:
             raise BachSemanticError("Unexpected %s" % tokenType, state, pos)

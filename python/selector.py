@@ -3,7 +3,7 @@ Converts a Bach document into an Element Tree for querying using
 XPath and CSSSelector
 
 Usage:
-    cat examples/ElementTree.bach | python3 python/examples/ElementTree.py
+    cat examples/selector.bach | python3 python/selector.py
 Dependencies:
     sudo apt-get install libxml2-dev libxslt1-dev
     sudo pip3 install lxml
@@ -24,48 +24,26 @@ from lxml import etree
 
 
 # mapping from shorthand attribute to longhand attribute
-attrib_mapping = \
+shorthandMapping = \
 {
     '#': 'id',
     '.': 'class',
 }
-
-def mergeattributes(shorthand, longhand, mapping=attrib_mapping):
-    # create a dict for all keys in longhand, shorthand
-    a = {}
-
-    for s in shorthand:
-        a[attrib_mapping[s]] = shorthand[s]
-    
-    for l in longhand:
-        if l in a:
-            a[l].append(longhand[l])
-        else:
-            a[l] = longhand[l]
-    
-    return a
-    
+  
 
 
 def mketree(tree, parent=None):
     # convert a bach document into Element Tree
-    # This is mostly straight forward, except for the "shorthand-attributes"
-    # which must be translated into full attributes.
-
-    # this is a quick recursive implementation but we don't have to worry about
-    # a stack overflow because bach has sanity settings that limit the
-    # depth of any tree
     
-    # A bach document is (label, shorthand attributes, attributes, values)
-    label, shorthand, attributes, values = tree
+    # A bach document is (label, attributes, values)
+    label, attributes, values = tree
     
     if parent is not None:
         e = etree.SubElement(parent, label)
     else:
         e = etree.Element(label)
     
-    fullattrib = mergeattributes(shorthand, attributes)
-    for k,v in fullattrib.items():
+    for k,v in attributes.items():
         e.set(k, ' '.join(v))
 
     lastElement = e
@@ -91,7 +69,7 @@ args = ap.parse_args()
 
 fp = io.TextIOWrapper(sys.stdin.buffer, encoding=args.encoding, newline='')
 
-tree = bach.parse(fp)
+tree = bach.parse(fp, shorthandMapping)
 root = mketree(tree)
 
 print("Converted into an ElementTree")

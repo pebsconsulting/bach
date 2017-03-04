@@ -1,0 +1,12 @@
+document
+
+(section
+    (title "Hello World!")
+    (p "This is a simple document without any shorthand attributes.")
+    
+    (section
+        (title "This is a Subsection")
+        (p "With its own paragraphs.")
+        (p "It can have several")
+    )
+)
