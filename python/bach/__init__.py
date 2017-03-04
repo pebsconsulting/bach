@@ -22,7 +22,7 @@
 # SOFTWARE.
 
 # If True, syntax errors also print out the lexer state stack
-debug=True
+debug=False
 
 # If True, enables the @profile decorator from builtins.profile
 # for use with profiling tools e.g. kernprof
@@ -41,6 +41,7 @@ max_attribute_name_len      =           127
 
 max_attribute_value_len     =      256*1024
 max_literal_value_len       =   4*1024*1024
+max_lexeme_len              =   4*1024*1024
 
 max_attributes_per_subdoc   =           256
 max_subdocuments_per_subdoc =       32*1024

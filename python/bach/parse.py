@@ -539,6 +539,8 @@ def tokenise(stream):
                         currentSemantic = emitSemantic
                     if ParserRuleFlag.containsCapture(ruleFlags):
                         capture.append(current)
+                        if len(capture) > bach.max_lexeme_len:
+                            raise BachParseLimitError("Maximum lexeme length", 'max_lexeme_len', (line, col, offset));
                     if ParserRuleFlag.containsCaptureEnd(ruleFlags):
                         yield (currentSemantic, ''.join(capture), (line, col, offset))
                 
@@ -634,6 +636,11 @@ class Document:
     
     @profile
     def toTuple(self):
+        def f(x):
+            if type(x) is str: return x
+            return x.toTuple()
+        
+        self.contents = list(filter(f, self.contents))
         return (self.label, self.shorthand, self.attributes, self.contents)
     
     @profile
@@ -760,7 +767,7 @@ empty lines or left-aligned #-style comments."
 
     if state.top() is ProductionSymbol.SD:
         return \
-"Parsing failed before the end of a subdocument, probably because of a missing closing parenthesis."
+"Parsing failed before the end of a subdocument, probably because of a missing closing parenthesis or an unexpected character."
 
     return "No extra help is available for this error state, sorry."
 
