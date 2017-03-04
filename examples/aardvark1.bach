@@ -1,0 +1,35 @@
+document
+
+(metadata
+    (copyright
+        author="Wikipedia Contributors"
+        source="https://en.wikipedia.org/wiki/Aardvark"
+        license="https://creativecommons.org/licenses/by-sa/3.0/"
+    )
+    (tags
+        "animal"
+        "nocturnal"
+        "Africa"
+    )
+)
+
+(h1 "Aardvark")
+
+(p
+    "The aardvark is a medium-sized, burrowing, nocturnal"
+    (a "mammal" href="https://en.wikipedia.org/wiki/Mammal")
+    "native to Africa."
+    (cite #NEB10 location="pp. 3-4")
+)
+
+
+(citations
+    (book #NEB10
+        chapter     = "Aadvark"
+        author      = "Hoiberg, Dale H., ed."
+        title       = "The New Encyclopædia Britannica: Macropaedia, Knowledge in depth"
+        edition     = "15"
+        publisher   = "Encyclopædia Britannica"
+        pubdate     = "2010"
+    )
+)

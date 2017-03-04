@@ -1,0 +1,10 @@
+document
+    
+    (section
+        (title "Hello World!")
+        (p "This is an example document for the Bach selector example program,
+        for querying a document using XPath and cssselect")
+        (p "This is a sentence" (span.fancy "with fancy text") "in the middle"
+           (span.fancy.xtrafancy class="megafancy" "and at the end."))
+        (p "This is a sentence" (span "with less fancy text") "in the middle.")
+    )

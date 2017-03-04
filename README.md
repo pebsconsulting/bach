@@ -38,11 +38,14 @@ an array of attribute value strings.
 **contents:** an ordered collection of zero or more string literals and/or
 (sub)documents recursively.
 
-Once parsed into this structure, Bach documents can be easily manipulated using
-code.
-
 Bach documents are parseable in linear time to the length of the input and one
 byte of lookahead i.e. with an LL(1) parser.
+
+Once parsed into this structure, Bach documents can be easily manipulated using
+code. We include an example showing how to convert a Bach document into a Python
+[ElementTree](http://effbot.org/zone/element-index.htm) to be queried using
+[XPath](http://lxml.de/xpathxslt.html) and
+[CSS Selectors](https://cssselect.readthedocs.io/en/latest/#id6).
 
 
 ## Examples
