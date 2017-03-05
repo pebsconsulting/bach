@@ -633,8 +633,10 @@ class Document:
             if type(x) is str: return x
             return x.toTuple()
         
-        self.contents = list(filter(f, self.contents))
-        return (self.label, self.attributes, self.contents)
+        newContents = []
+        for x in self.contents:
+            newContents.append(f(x))
+        return (self.label, self.attributes, newContents)
     
     @profile
     def __repr__(self):

@@ -21,38 +21,36 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# If True, syntax errors also print out the lexer state stack
-debug=False
 
-# If True, enables the @profile decorator from builtins.profile
-# for use with profiling tools e.g. kernprof
-profile=False
+def toElement(etreeClass, bachDocument, parent):
+    print(type(bachDocument))
+    label, attributes, values = bachDocument
+    
+    if parent is not None:
+        e = etreeClass.SubElement(parent, label)
+    else:
+        e = etreeClass.Element(label)
+    
+    for k,v in attributes.items():
+        e.set(k, ' '.join(v))
 
-# Internal buffer size - 64k gives good performance
-bufsz=64*1024
-
-# Sanity settings to avoid malicious inputs
-# -- parse speed is always linear to the input size,
-# -- but memory consumption isn't
-# -- string lengths are characters, not bytes
-
-max_label_name_len          =           127
-max_attribute_name_len      =           127
-
-max_attribute_value_len     =      256*1024
-max_literal_value_len       =   4*1024*1024
-max_lexeme_len              =   4*1024*1024
-
-max_attributes_per_subdoc   =          1024
-max_subdocuments_per_subdoc =       32*1024
-max_literals_per_subdoc     =       32*1024
-
-max_subdocument_depth       =            64
-
-max_subdocuments_globally   =      256*1024
-max_literals_globally       =      256*1024
+    lastElement = e
+    for i in values:
+        if type(i) is str:
+            if lastElement == e:
+                lastElement.text = i
+            else:
+                lastElement.tail = i
+        else:
+            e2 = toElement(etreeClass, i, e)
+            lastElement = e2
+    
+    return e
 
 
-from .parse import parse, BachError
-from .xtra import toElementTree
+def toElementTree(etreeClass, bachDocument):
+    """Convert a bach document into an Element Tree (e.g. from lxml import
+    etree as etreeClass) for querying with XPath or a CSS selector engine such
+    as cssselect."""
+    return toElement(etreeClass, bachDocument, None)
 
