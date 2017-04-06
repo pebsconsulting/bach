@@ -1,12 +1,12 @@
 """
-Converts a Bach document into an Element Tree for querying using
-XPath and CSSSelector
+Example - converts a Bach document into an Element Tree
+for querying using XPath and CSSSelector.
 
 Usage:
     cat examples/selector.bach | python3 python/selector.py
 Dependencies:
-    sudo apt-get install libxml2-dev libxslt1-dev
-    sudo pip3 install lxml
+    sudo apt-get install libxml2-dev libxslt1-dev zlib1g-dev
+    sudo pip3 install cssselect lxml
 Read:
     http://lxml.de/api.html
     http://effbot.org/zone/element-index.htm

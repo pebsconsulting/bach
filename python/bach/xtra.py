@@ -23,7 +23,6 @@
 
 
 def toElement(etreeClass, bachDocument, parent):
-    print(type(bachDocument))
     label, attributes, values = bachDocument
     
     if parent is not None:
