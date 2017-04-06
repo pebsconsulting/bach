@@ -27,17 +27,15 @@ from itertools import tee, zip_longest
 from functools import reduce
 
 
+def profile(func):
+    return func
+
+
 # default @profile decorator
 if bach.profile:
     import builtins
-    try:
-        profile = builtins.profile
-    except AttributeError:
-        def profile(func):
-            return func
-else:
-    def profile(func):
-        return func
+    profile = builtins.__dict__.get('profile', profile)
+    
 
 
 class BachError(Exception): pass

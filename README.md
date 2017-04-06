@@ -49,7 +49,8 @@ convert a Bach document into a Python
 
 How best to structure a document depends on your application domain.
 
-Here is one example in HTML-style.
+Here is one example with HTML-style headings. But you might prefer to use
+LaTeX-style titles and (sub)sections instead.
 
     document
     
@@ -86,48 +87,6 @@ Here is one example in HTML-style.
             pubdate     = "2010"
         )
     )
-
-
-Here is another example, in a more hierarchical structure:
-
-    book
-
-    title="The Big Book of Aardvarks"
-    
-    (chapter
-        title="What is an Aardvark?"
-        (p "The aardvark is a medium-sized, burrowing, nocturnal mammal native to Africa")
-        (figure
-            caption="Basic Aadvark facts"
-            (table columns="2"
-                (cell.title "Scientific name")  (cell "Orycteropus afer")
-                (cell.title "Mass (adult)")     (cell "40 to 65 kg")
-                (cell.title "Gestation period") (cell "213 days")
-            )
-        )
-        (figure
-            caption="Aardvark Taxonomy"
-            reference="https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=584927#null"
-            (taxinomy
-                (kingdom "Animalia"
- 	                (subkingdom "Bilateria"
-                 	      (infrakingdom "Deuterostomia"
- 	                        (phylum "Chordata"
-                                (subphylum "Vertebrata"
-                                    (infraphylum "Gnathostomata"
- 	                                    (superclass "Tetrapoda "
-                                            (class "Mammalia" by="Linnaeus, 1758"
- 	                                            (subclass "Theria" by="Parker and Haswell, 1897"
- 	                                                (infraclass "Eutheria" by="Gill, 1872"
-                                                        (order "Tubulidentata" by="Huxley, 1872"
-                                                            (family "Orycteropodidae" by="Gray, 1821"
-                                                                (genus "Orycteropus G." by="Cuvier, 1798"
-                                                                    (species "Orycteropus afer" by="Pallas, 1766"))))))))))))))
-            )
-        )
-    )
-    
-
 
 
 # Syntax and Semantics
