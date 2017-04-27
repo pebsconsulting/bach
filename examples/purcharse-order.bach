@@ -1,0 +1,34 @@
+# Adapted from this XML document:
+# https://www.w3.org/TR/xmlschema-0/#po.xml
+
+purchase-order
+    order-date="1999-10-20"
+
+    (ship-to country="US"
+        (name       "Alice Smith")
+        (street     "123 Maple Street")
+        (city       "Mill Valley")
+        (state      "CA")
+        (zip        "90952")
+    )
+    (bill-to country="GB"
+        (name       "Robert Smith")
+        (street     "8 Oak Avenue")
+        (city       "Old Town")
+        (postcode   "AB1 2XY")
+    )
+    (comment "Hurry, my lawn is going wild")
+    (items
+        (item part-num="872-AA"
+            (productName    "Lawnmower")
+            (quantity       "1")
+            (price currency="USD" "148.95")
+            (comment        "Confirm this is electric")
+        )
+        (item part-num="926-AA"
+            (productName    "Baby Monitor")
+            (quantity       "1")
+            (price currency="USD" "39.98")
+            (ship-date      "1999-05-21")
+        )
+    )

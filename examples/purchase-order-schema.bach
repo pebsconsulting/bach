@@ -1,0 +1,90 @@
+# Example adapted from this XML Schema:
+# https://www.w3.org/TR/xmlschema-0/#po.xsd
+# Note this isn't a 1:1 copy; our schema is different.
+
+schema
+
+    (annotation lang="en"
+        "Purchase order schema for Example.com
+        Copyright 2000 Example.com. All rights reserved."
+    )
+
+    (element name="purchase-order" type="PurchaseOrder")
+
+    (type name="PurchaseOrder"
+        (attributes
+            (attribute name="order-date" required type="YYY-MM-DD")
+        )
+        (elements
+            (element name="ship-to" required type="Address")
+            (element name="bill-to" required type="Address")
+            (element name="items"   required type="Items")
+            (element name="comment" any      type="string")
+        )
+    )
+
+    (compound-type name="Address")
+        (types
+            (type "USAddress")
+            (type "UKAddress")
+        )
+    )
+
+    (type name="UKAddress"
+        (attributes
+            (attribute name="country" required type="string" fixed="GB")
+        )
+        (elements ordered
+            (element name="name"     optional type="string")
+            (element name="street"   required type="string")
+            (element name="locality" optional type="string")
+            (element name="city"     optional type="string")
+            (element name="postcode" required type="string")
+        )
+    )
+
+    (type name="USAddress"
+        (attributes
+            (attribute name="country" required type="string" fixed="US")
+        )
+        (elements ordered
+            (element name="name"   optional type="string")
+            (element name="street" required type="string")
+            (element name="city"   optional type="string")
+            (element name="state"  required type="string" limit="2")
+            (element name="zip"    required type="string")
+        )
+    )
+
+    (compound-type name="Currency")
+        (types
+            (type "USD")
+        )
+    )
+
+    (type name="USD"
+        (attributes
+            (attribute name="currency" required type="string" fixed="USD")
+        )
+        (elements
+            (element type="fixed-point" required decimals="2")
+        )
+    )
+
+    (element name="items"
+        (elements
+            (element name="item" some
+                (attributes
+                    (attribute name="part-num" required)
+                )
+                (elements ordered
+                    (element name="product-name" optional type="string")
+                    (element name="quantity"     required type="integer" limit="[1, 99]")
+                    (element name="price"        required type="Currency")
+                    (element name="comment"      any      type="string")
+                    (element name="ship-date"    optional type="YYYY-MM-DD")
+                )
+            )
+        )
+    )
+
