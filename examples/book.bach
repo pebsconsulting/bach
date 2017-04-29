@@ -1,0 +1,70 @@
+# LaTeX style book with subsections created by nesting sections
+# cat examples/book.bach | python3 python/bach2latex-simple.py
+
+book
+    title="My Example Book"
+    author="Grace Hopper"
+    author="Alan Turing"
+    date="\\today"
+
+(chapter title="Introduction"
+
+    (p "Lorem ipsum dolor sit amet, ``consectetur adipiscing'' elit. Proin laoreet velit
+    non nisl rhoncus auctor. Integer commodo scelerisque est, id volutpat dui
+    congue ac. Pellentesque arcu metus, molestie id lorem ac, sodales auctor nisi.
+    Ut maximus erat ac lacus porttitor, et maximus felis ultrices. Maecenas eu
+    metus vestibulum, tempus ante eget, placerat ex. Nunc erat arcu, pulvinar eget
+    dictum a, tempor ac sapien. Suspendisse potenti. Nam non elementum nisi.")
+
+    (p "Sed sollicitudin diam tellus, at dignissim leo luctus ut. Nam sed cursus massa.
+    Vivamus arcu tellus, aliquet ac rhoncus non, rhoncus in risus. Aenean
+    scelerisque est vitae efficitur pulvinar. Phasellus in ex quis nisi bibendum
+    semper. Fusce non sem ut est sollicitudin placerat non sed turpis. Nullam non
+    nunc posuere, mattis magna ac, placerat tortor.")
+
+    (section title="Subsection"
+        (p "Aenean scelerisque est vitae efficitur pulvinar. Phasellus in ex quis nisi
+        bibendum semper. Fusce non sem ut est sollicitudin placerat non sed turpis.")
+
+        (section title="Subsubsection"
+            (p "Nunc erat arcu, pulvinar eget dictum a, tempor ac sapien. Suspendisse potenti.")
+            (p "Here is some special " (b "bold text") " in a paragraph.")
+        )
+
+        (section title="Subsubsection"
+            (p "Nunc erat arcu, pulvinar eget dictum a, tempor ac sapien. Suspendisse potenti.")
+        )
+    )
+
+    (p "Orci varius natoque penatibus et magnis dis parturient montes, nascetur
+    ridiculus mus. Vivamus bibendum venenatis libero, eu mattis urna scelerisque
+    sed. Nunc posuere justo eget dictum congue. Pellentesque imperdiet nunc ac
+    nulla porttitor egestas. Vivamus scelerisque tincidunt mattis. Duis id diam ac
+    odio scelerisque commodo et eu odio. In mauris purus, volutpat ac erat nec,
+    fringilla convallis libero. Duis sem elit, accumsan sit amet ornare vel, rutrum
+    et mauris. Nam ac eleifend tortor.")
+)
+
+
+(chapter title="Second Chapter"
+ 
+    (p "Phasellus placerat ornare lectus ut gravida. Mauris iaculis sagittis ex, vitae
+    porttitor dolor tempor a. Mauris ornare sapien enim, sit amet dapibus erat
+    placerat ac. Duis sed tincidunt tortor. Ut placerat ipsum dui, ac ullamcorper
+    tellus venenatis eu. Duis ultrices vehicula elementum.")
+
+    (p "Orci varius natoque penatibus et magnis dis parturient montes, nascetur
+    ridiculus mus. Vivamus bibendum venenatis libero, eu mattis urna scelerisque
+    sed. Nunc posuere justo eget dictum congue. Pellentesque imperdiet nunc ac
+    nulla porttitor egestas. Vivamus scelerisque tincidunt mattis. Duis id diam ac
+    odio scelerisque commodo et eu odio. In mauris purus, volutpat ac erat nec,
+    fringilla convallis libero. Duis sem elit, accumsan sit amet ornare vel, rutrum
+    et mauris. Nam ac eleifend tortor.")
+
+    (p "Integer rhoncus velit ligula, vitae suscipit ipsum ornare eu. Pellentesque
+    augue arcu, interdum eget nisl ac, efficitur lacinia diam. Phasellus a dolor
+    mi. Donec quis erat eros. Nulla augue enim, tempor ac dignissim et, vehicula
+    non urna. Integer in neque dignissim leo molestie sagittis nec a mauris. Nunc
+    dictum felis rhoncus consequat hendrerit.")
+)
+
