@@ -1,3 +1,7 @@
 .*
 !.gitignore
 __pycache__
+
+# symlink for testing
+/bach
+/tests/bach

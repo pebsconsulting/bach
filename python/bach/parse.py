@@ -115,12 +115,12 @@ class ProductionSymbol(Enum):
     LBQESC = 10 # Escape Sequence within [Bracket]-Quoted String Literal Remainder
     D      = 11 # Document (i.e. past function label and any header comments)
     LD     = 12 # Literal followed by rest of D
-    ALD    = 13 # Assignment followed by LD
+    ALD    = 13 # Attribute assignment followed by LD
     XSCC   = 14 # Excluding Special Characters Capture
     SDS    = 15 # Subdocument Start (excludes opening parenthesis)
     SD     = 16 # Subdocument (i.e. past function label)
-    LSD    = 17 # Literal followed vy rest of SD
-    ALSD   = 18 # Assignment followed by LSD
+    LSD    = 17 # Literal followed by rest of SD
+    ALSD   = 18 # Attribute Assignment followed by LSD
     DSH    = 19 # Document shorthand attribute
     SDSH   = 20 # Subdocument shorthand attribute
     
@@ -142,6 +142,7 @@ class CaptureSemantic(Enum):
     subdocEnd       = 6
     shorthandSymbol = 7
     shorthandAttrib = 8
+    neverchecked    = 9
     
     @staticmethod
     @profile
@@ -395,25 +396,25 @@ ProductionRules = [\
     ('SD',       '∉sc',     'ϵws',      ['WS', 'SD'],           ['captureStart', 'captureEnd', 'capture'],  'attribute'),
     # SD => ¬sc XSCC SD
     ('SD',       '∉sc',     '∉sc',      ['XSCC','SD'],          ['captureStart', 'capture'],                'attribute'),
-    # SD => ¬sc )
+    # SD => ¬sc )       (end of subdocument)
     ('SD',       '∉sc',     'ϵ)',       ['SD'],                 ['captureStart', 'captureEnd', 'capture'],  'attribute'),
     
     # --- Attributes - pair start / pair second half
     
-    # D => ¬sc asgn LD
+    # D => ¬sc asgn LD ---- (¬sc ALSD)
     ('D',       '∉sc',      'ϵasgn',    ['ALD'],                ['captureStart', 'captureEnd', 'capture'],  'attribute'),
     # D => assgn LD
     ('D',       'ϵasgn',    'ϵAll',     ['LD'],                 ['captureStart', 'captureEnd', 'capture'],  'assign'),
-    # ALD => assign LD
-    ('ALD',     'ϵasgn',    'ϵAll',     ['LD'],                 [],                                         'attribute'),
+    # ALD => asign LD
+    ('ALD',     'ϵasgn',    'ϵAll',     ['LD'],                 ['captureStart', 'captureEnd', 'capture'],  'assign'), # was [], "attribute", changed to fix issue #2
     # LD => ws LD
     ('LD',      'ϵws',      'ϵAll',     ['LD'],                 [],                                         'none'),
-     # SD => ¬sc asgn LSD
+     # SD => ¬sc asgn LSD ---- (¬sc ALSD)
     ('SD',      '∉sc',      'ϵasgn',    ['ALSD'],               ['captureStart', 'captureEnd', 'capture'],  'attribute'),
     # SD => assgn LSD
     ('SD',      'ϵasgn',    'ϵAll',     ['LSD'],                ['captureStart', 'captureEnd', 'capture'],  'assign'),
     # ALSD => assign LSD
-    ('ALSD',    'ϵasgn',    'ϵAll',     ['LSD'],                [],                                         'attribute'),
+    ('ALSD',    'ϵasgn',    'ϵAll',     ['LSD'],                ['captureStart', 'captureEnd', 'capture'],  'assign'), # was [], "attribute", changed to fix issue #2
     # LSD => ws LSD
     ('LSD',     'ϵws',      'ϵAll',     ['LSD'],                [],                                         'none'),   
     
