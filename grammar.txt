@@ -1,0 +1,226 @@
+# Bach language syntax
+
+# This is a machine-readable document so that we can compile grammar to a
+# language-portable and efficient binary representation
+
+# Usage: cat grammar.txt | python3 ./cgrammar.py > compiled-grammar.txt
+
+
+[Production Symbols]
+    S           # Start (always ID 0)
+    IWS         # "inline" whitespace - whitespace excluding \n
+    WS          # whitespace
+    LF          # Linefeed
+    C           # Comment
+    LSQ         # 'Single'-Quoted String Literal Remainder (excudes opening quote)
+    LDQ         # "Double"-Quoted String Literal Remainder (excudes opening quote)
+    LBQ         # [Bracket]-Quoted String Literal Remainder (excudes opening quote)
+    LSQESC      # Escape Sequence within 'Single'-Quoted String Literal Remainder
+    LDQESC      # Escape Sequence within "Double"-Quoted String Literal Remainder
+    LBQESC      # Escape Sequence within [Bracket]-Quoted String Literal Remainder
+    D           # Document (i.e. past function label and any header comments)
+    LD          # Literal followed by rest of D
+    ALD         # Attribute assignment followed by LD e.g. ="foo"
+    XSCC        # Excluding Special Characters Capture
+    SDS         # Subdocument Start (excludes opening parenthesis)
+    SD          # Subdocument (i.e. past function label)
+    LSD         # Literal followed by rest of SD
+    ALSD        # Attribute Assignment followed by LSD e.g. ="foo"
+    DSH         # Document shorthand attribute e.g. .className, #idName
+    SDSH        # Subdocument shorthand attribute
+    RB          # Right Bracket )
+
+
+[Capture Semantics]
+    none                0
+    label               1
+    attribute           2
+    literal             3
+    assign              4
+    subdocStart         5
+    subdocEnd           6
+    shorthandSymbol     7
+    shorthandAttrib     8
+#   (ensure your parser uses a matching mapping)
+
+
+[Terminals]
+#                        |-duplicates with \\ escape prior
+    "#= \t\r\n()\"'[]<>\\'\\[\\\""
+#    012 3 4 567 89ABCD EF GH I J index
+# At runtime, this string may grow, so allocate at least +16 characters.
+
+
+[Terminal Sets]
+
+    # name | ID | start index in string | end index in string (exclusive)
+
+    # ID none 0
+    special:none 0 0 0 # note that "not none" => "any"
+    
+    # special "end of file" (e.g. for when grammar allows/expects a EOF)
+    # ID always 1
+    special:eof 1  0 0
+    
+    # shorthand separators configured at runtime, ID always 2
+    ss          2  K K
+    
+    # ID always 3, disallowed shorthand separators
+    _dss        3  1 F # all sc except #
+    
+    iws         3  2 5 # " \t\r"     # "inline" whitespace (whitespace excluding \n but including /r)
+    ws          4  2 6 # " \t\r\n"   # whitespace
+    bs          5  E F # "\\"        # backslash
+    lf          6  5 6 # "\n"       # UNIX linefeed ("\n")
+    sc          7  0 K # "#=\t\r\n ()[]<>\"'\\" # special characters (plus shorthand separators at runtime)
+    oqt         8  8 B # "\"['"      # opening quoted literal e.g. ", [, '
+    asgn        9  1 2 # "="         # assignment characters e.g. "="
+    scmt        A  0 1 # "#"         # single-line comments at start of document only
+    rb          B  7 8 # ")"         # right bracket
+    lb          C  6 7 # "("         # left bracket
+    dq          D  8 9 # "\""        # double quote
+    sq          E  9 A # "'"         # single quote
+    lbrace      F  A B # "["         # left brace
+    rbrace      G  B C # "]"         # right brace
+    dqesc       H  I K # "\\\""      # double quote escape
+    sqesc       I  E G # "\\'"       # singe quote escape  
+    rbraceesc   J  G I # "\\]"       # right brace escape
+
+
+[Production Rules]
+
+# ALWAYS given in Greibach Normal Form
+# i.e. NonTerminal => TerminalSet [NonTerminals...]
+# C - Capture, CS - Capture Start, CE - Capture End
+
+#  Rules for initial whitespace and comments at head of document
+
+    S => iws LF S               ; lookahead in lf
+    S => iws IWS LF S           ; lookahead not in lf
+  IWS => iws                    ; lookahead not in iws
+  IWS => iws IWS                ; lookahead in iws
+    S => lf S
+   LF => lf
+    S => scmt C LF S            ; lookahead not in lf
+    S => scmt LF S              ; lookahead in lf
+    C => ¬lf                    ; lookahead in lf
+    C => ¬lf C                  ; lookahead not in lf
+
+
+# End of subdocument ")"
+   RB => rb
+
+
+# Rules for strings of "one or more" of a certain set
+
+   WS => ws                   ; lookahead not in ws
+   WS => ws                   ; lookahead in special:eof
+   WS => ws WS                ; lookahead in ws
+ XSCC => ¬sc                  ; lookahead in sc;     C; CE
+ XSCC => ¬sc XSCC             ; lookahead not in sc; C
+
+
+# Start of document, a function/label identifier on the first line
+
+    S => ¬sc WS D             ; lookahead in ws;     C; CS; CE; as label
+    S => ¬sc XSCC D           ; lookahead not in sc; C; CS;     as label
+
+
+# Document may contain arbitrary whitespace
+
+    D => ws D                 ; lookahead not in ws
+    D => ws                   ; lookahead in special:eof
+    D => ws WS D              ; lookahead in ws
+
+# "Shorthand" attributes e.g. .className, #idName
+    D => ss DSH D             ; lookahead not in sc; C; CS; CE; as shorthandSymbol
+  DSH => ¬sc                  ; lookahead in sc;     C; CS; CE; as shorthandAttrib
+  DSH => ¬sc XSCC             ; lookahead not in sc; C; CS;     as shorthandAttrib
+   SD => ss SDSH SD           ; lookahead not in sc; C; CS; CE; as shorthandSymbol
+ SDSH => ¬sc                  ; lookahead in sc;     C; CS; CE; as shorthandAttrib
+ SDSH => ¬sc XSCC             ; lookahead not in sc; C; CS;     as shorthandAttrib
+
+
+# Attributes - standalone
+# (may be the start of a pair, but that can't yet be detected)
+
+    D => ¬sc WS D             ; lookahead in ws;     C; CS; CE; as attribute
+    D => ¬sc XSCC D           ; lookahead not in sc; C; CS;     as attribute
+   SD => ¬sc WS SD            ; lookahead in ws;     C; CS; CE; as attribute
+   SD => ¬sc XSCC SD          ; lookahead not in sc; C; CS;     as attribute
+   
+# attribute at end of subdocument (then SD => rb follows)
+   SD => ¬sc SD               ; lookahead in rb;     C; CS; CE; as attribute
+
+
+# Attributes - pair start / pair second half
+
+    D => ¬sc ALSD             ; lookahead in asgn;   C; CS; CE; as attribute
+    D => asgn LD              ;                      C; CS; CE; as assign
+  ALD => asgn LD              ;                      C; CS; CE; as assign
+   LD => ws LD
+   SD => ¬sc ALSD             ; lookahead in asgn;   C; CS; CE; as attribute
+   SD => asgn LSD             ;                      C; CS; CE; as assign
+ ALSD => asgn LSD             ;                      C; CS; CE; as assign
+  LSD => ws LSD
+
+
+# Subdocuments Start
+
+    D => lb SDS D             ;                      C; CS; CE; as subdocStart
+  SDS => ws SDS
+
+
+# Start of subdocument, a function/label identifier on the first line
+
+  SDS => ¬sc WS SD            ; lookahead in ws;     C; CS; CE; as label
+  SDS => ¬sc XSCC SD          ; lookahead not in sc; C; CS;     as label
+  SDS => ¬sc SD               ; lookahead in rb;     C; CS; CE; as label
+
+# Rest of subdocument
+
+   SD => lb SDS SD            ;                      C; CS; CE; as subdocStart
+   SD => rb                   ;                      C; CS; CE; as subdocEnd
+   SD => ws SD
+
+
+# Rules for 'Single'/"Double"/[bracket]-quoted literals and escapes
+
+#   D => " LDQ D
+    D => dq LDQ D             ;                         CS;     as literal
+    D => sq LSQ D             ;                         CS;     as literal
+    D => lbrace LBQ D         ;                         CS;     as literal
+    
+   LD => dq LDQ D             ;                         CS;     as literal
+   LD => sq LSQ D             ;                         CS;     as literal
+   LD => lbrace LBQ D         ;                         CS;     as literal
+
+   SD => dq LDQ SD            ;                         CS;     as literal
+   SD => sq LSQ SD            ;                         CS;     as literal
+   SD => lbrace LBQ SD        ;                         CS;     as literal
+
+  LSD => dq LDQ SD            ;                         CS;     as literal
+  LSD => sq LSQ SD            ;                         CS;     as literal
+  LSD => lbrace LBQ SD        ;                         CS;     as literal
+
+# LDQ -> "
+  LDQ  => dq                  ;                             CE
+  LSQ  => sq                  ;                             CE
+  LBQ  => rbrace              ;                             CE
+
+# LDQ => ¬escapeseqence LQQ
+  LDQ  => ¬dqesc LDQ           ;                      C  
+  LSQ  => ¬sqesc LSQ           ;                      C
+  LBQ  => ¬rbraceesc LBQ       ;                      C
+ 
+# LDQ => bs escapesequence LDQ
+  LDQ  => bs LDQESC LDQ
+  LSQ  => bs LSQESC LDQ
+  LBQ  => bs LBQESC LDQ
+
+# DDQEST => escapable
+LDQESC => dqesc               ;                     C
+LSQESC => sqesc               ;                     C
+LBQESC => rbraceesc           ;                     C
+
+
