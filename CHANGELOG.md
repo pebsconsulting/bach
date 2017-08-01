@@ -53,6 +53,6 @@
     hand-authoring documents with a map both to and from XML for integration
     with existing XML tooling.
 
-    Watch for these changes to
+    Watch for these changes to \
    [Bach on GitHub](https://github.com/tawesoft/bach)
 
