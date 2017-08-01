@@ -78,6 +78,26 @@ Here's an example with XML namespaces:
             (d:rating   "9.5")
         )
 
+
+Here's a contrived HTML4-style example:
+
+    html
+    
+        (div #header
+            (a href="/" (img src="/logo.png" "Example.org Logo"))
+        )
+
+        (div #body
+            (div.left
+                (span.bold "Welcome") " to Example.org!")
+            )
+        )
+        
+        (div #foot
+            (p "Copyright © Example Organisation")
+        )
+
+
 # Syntax and Semantics
 
 A Bach document is a non-empty string that may start with #-style comments,
