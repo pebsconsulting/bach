@@ -119,7 +119,7 @@ This is quite similar to the syntax of CSS selectors. For example:
     (anElement#someId.classOne.classTwo enabled title="An Example Element")
 
 Full attributes are any string of non-special characters followed by an equals
-or colon followed by a string literal. Whitespace is optional.
+followed by a string literal. Whitespace is optional.
 
     anAttribute="a value"
     anAttribute = "a value"
