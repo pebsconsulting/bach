@@ -17,14 +17,17 @@ documentation, and static website generators.
 
 ### Convert to and from XML, Python Literals, Python XML Element Trees
 
-Bach documents have a 1:1 mapping between XML, a recursive data structure made
-up of native Python types and string literals, and more.
+Bach documents have a 1:1 mapping between XML; a recursive data structure made
+up of native Python types and string literals; Python Element Trees, and more.
+Use Bach with all the powerful tools you expect, like XLST, XQuery, DTD and
+XML Schemas.
 
 ### Shorthand attribute syntax configurable at parse-time
 
 A special "shorthand" syntax can expand attributes like `.myClass` into
 `class="myClass"`. The shorthand syntax is fully configurable at parse-time,
-including 
+including (soon) customisable encoding of lists and sets e.g. how to combine
+multiple CSS classes into one attribute.
 
 ### Efficient portable parser
 
