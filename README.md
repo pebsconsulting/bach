@@ -82,6 +82,10 @@ Here's an example with XML namespaces:
 Here's a contrived HTML4-style example:
 
     html
+        (meta
+            (title "Hello World")
+            (description "My Example Website!")
+        )
     
         (div #header
             (a href="/" (img src="/logo.png" "Example.org Logo"))
