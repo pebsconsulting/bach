@@ -7,7 +7,7 @@
 
 Bach is for anyone hand-authoring structured semantic text that is parsed into
 a data structure to be transformed programmatically. It is fully interoperable
-with your existing XML-based tooling - but it's a lot nicer to read and write!
+with your existing XML-based tooling, but it's a lot nicer to read and write!
 
 Our key use cases for Bach are multilingual documents, technical
 documentation, and static website generators.
