@@ -75,7 +75,7 @@ Here's an example with XML namespaces:
             (d:id       "3235329")
             (d:name     "Jeff Smith")
             (d:language "Python")
-            (d:rating   9.5)
+            (d:rating   "9.5")
         )
 
 # Syntax and Semantics
