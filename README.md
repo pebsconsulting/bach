@@ -152,10 +152,10 @@ tribute to the work of computer scientist
 
 ## License
 
-This license applies to the Bach Reference Implementations and associated
+This license applies to the Bach Reference Implementation(s) and associated
 documentation.
 
-    Bach - a general-purpose semantic document markup language
+    Bach - XML-interoperable general-purpose semantic document markup language
 
     Copyright © 2017 Ben Golightly <ben@tawesoft.co.uk>
     Copyright © 2017 Tawesoft Ltd <opensource@tawesoft.co.uk>

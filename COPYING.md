@@ -1,10 +1,9 @@
 # COPYING
 
-This license applies to the Bach Python 3.4 Reference Implementation, and
-associated documentation. We do not claim to copyright Bach *as a language*;
-other implementations are encouraged!
+This license applies to the Bach Reference Implementation(s) and associated
+documentation.
 
-    Bach - a general-purpose semantic document markup language
+    Bach - XML-interoperable general-purpose semantic document markup language
 
     Copyright © 2017 Ben Golightly <ben@tawesoft.co.uk>
     Copyright © 2017 Tawesoft Ltd <opensource@tawesoft.co.uk>
