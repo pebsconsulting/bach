@@ -2,6 +2,15 @@
 
 ## 20170801
 
+    * The colon ":" is no longer an optional way to define attribute values.
+
+    This is to ensure better compatibility with XML namespaces.
+
+    Attribute value assignemnts are still possible using equals e.g. foo="bar"
+
+
+    * Portable formal grammar
+
     Created a machine-readable description of the grammar (grammar.txt) that
     can be compiled (cgrammar.py) into a compact state machine representation.
 

@@ -1,93 +1,79 @@
 # Bach
 
-**A general-purpose semantic document markup language**
-
-*This repository contains the reference implementation for Python >= 3.4*
+**An XML-interoperable general-purpose semantic document markup language**
 
 ![bach logo](logo-640.png)
 
 
-Bach is for anyone writing structured semantic text that is parsed into a
-data structure to be transformed programmatically.
+Bach is for anyone hand-authoring structured semantic text that is parsed into
+a data structure to be transformed programmatically. It is fully interoperable
+with your existing XML-based tooling - but it's a lot nicer to read and write!
 
 Our key use cases for Bach are multilingual documents, technical
-documentation, and static website generators. Bach is also suitable
-as a succinct generator for HTML, or as a command language (similar to
-[McCarthy 1982](http://www-formal.stanford.edu/jmc/cbcl2/cbcl2.html)).
+documentation, and static website generators.
 
 
-## At A Glance
+## Key Features
 
-A Bach document is a tuple:
+### Convert to and from XML, Python Literals, Python XML Element Trees
 
-    document = (label, attributes, contents)
+Bach documents have a 1:1 mapping between XML, a recursive data structure made
+up of native Python types and string literals, and more.
 
-**label:** a string with domain-specific semantics. You might like to think of
-it as a function name.
+### Shorthand attribute syntax configurable at parse-time
 
-**attributes:** a mapping of attribute name strings to an array of attribute
-value strings. Values appear in the order they are parsed from left to right.
+A special "shorthand" syntax can expand attributes like `.myClass` into
+`class="myClass"`. The shorthand syntax is fully configurable at parse-time,
+including 
 
-**contents:** an ordered collection of zero or more string literals and/or
-(sub)documents recursively.
+### Efficient portable parser
 
-A special "shorthand" syntax can expand attributes like `.classOne` into
-`class="classOne"`. The shorthand syntax is fully configurable at parse-time.
+The language grammar is formally defined and compiled into a compact portable
+representation, making it easy to parse Bach documents in your chosen language.
 
 Bach documents are parseable in linear time to the length of the input and one
 byte of lookahead i.e. with an LL(1) parser.
 
-Once parsed into this structure, Bach documents can be easily manipulated using
-code. We include [an example program](python/selector.py) that demonstrates how to
-convert a Bach document into a Python
-[ElementTree](http://effbot.org/zone/element-index.htm) to be queried using
-[XPath](http://lxml.de/xpathxslt.html) and
-[CSS Selectors](https://cssselect.readthedocs.io/en/latest/#id6).
-
+This repository contains reference implementations for both Python (>=3.4) and
+(soon!) C.
 
 ## Examples
 
-How best to structure a document depends on your application domain.
-
-Here is one example with HTML-style headings. But you might prefer to use
-LaTeX-style titles and (sub)sections instead.
+Here is a basic example without XML namespaces.
 
     document
     
-    (metadata
-        (copyright
-            author="Wikipedia Contributors"
-            source="https://en.wikipedia.org/wiki/Aardvark"
-            license="https://creativecommons.org/licenses/by-sa/3.0/"
+    (person
+        (name
+            (forename       "Grace")
+            (surname        "Hopper")
+            (other-names    "Brewster Murray")
+            (nicknames      (nickname "Amazing Grace"))
+            (aliases)
         )
-        (tags
-            "animal"
-            "nocturnal"
-            "Africa"
-        )
-    )
-    
-    (h1 "Aardvark")
-    
-    (p
-        "The aardvark is a medium-sized, burrowing, nocturnal"
-        (a "mammal" href="https://en.wikipedia.org/wiki/Mammal")
-        "native to Africa."
-        (cite #NEB10 location="pp. 3-4")
-    )
-    
-    
-    (citations
-        (book #NEB10
-            chapter     = "Aadvark"
-            author      = "Hoiberg, Dale H., ed."
-            title       = "The New Encyclopædia Britannica: Macropaedia, Knowledge in depth"
-            edition     = "15"
-            publisher   = "Encyclopædia Britannica"
-            pubdate     = "2010"
+        (dob        "19061209")
+        (bio
+            "Grace Brewster Murray Hopper was an American "
+            (wiki "computer scientist")
+            " and United States Navy rear admiral."
+
+            src="https://en.wikipedia.org/wiki/Grace_Hopper"
         )
     )
 
+Here's an example with XML namespaces:
+
+    # Example based on https://msdn.microsoft.com/en-us/library/aa468565.aspx
+
+    document
+        xmlns:d="http://www.develop.com/student"
+    
+        (d:student
+            (d:id       "3235329")
+            (d:name     "Jeff Smith")
+            (d:language "Python")
+            (d:rating   9.5)
+        )
 
 # Syntax and Semantics
 
@@ -98,7 +84,7 @@ comments, but may contain #-style shorthand attributes instead.
 
 Special characters are space, backslash, and
 
-    #=:\t\r\n()[]{}<>"'
+    #=\t\r\n()[]{}<>"'
 
 Special characters used for shorthand attributes are given to the parser as a
 mapping from shorthand symbols to attribute names.
@@ -133,33 +119,28 @@ Full attributes are any string of non-special characters followed by an equals
 or colon followed by a string literal. Whitespace is optional.
 
     anAttribute="a value"
-    anAttribute: "a value"
     anAttribute = "a value"
 
 The assignment may be ommitted, in which case the attribute is present but with
 a value such as `Null` or `None` (as distrinct from the empty string).
+***This behaviour may change for XML compatibility***
 
     (item anAttributeWithNoValue)
 
 Subdocuments start and end with brackets. They are always non-empty.
 
-    (document "a literal" (subdocument) "another literal")
+    document (subdocument "a literal" (anotherSubdocument) "another literal")
 
 
 ## Open Standard
 
-This is the Python reference implementation of Bach. While efficient by the
-standards of a pure-Python parser, it is hoped that faster implementations
-suitable for real-time, probably written at least partly in C, will shortly
-become available.
-
-A full formal grammar is given at [parse.py](python/bach/parse.py) as an array
-of tuples. The rules given in Greibach Normal Form with additional lookahead
-and semantic notation.
-
 Tawesoft Ltd is committed to supporting Bach as an Open Standard. At this early
 stage we invite feedback and comments but, if and as soon as the need arises,
 we are keen to see democratic and inclusive stewardship of the language.
+
+A full machine-readable formal grammar is given at [grammar.txt](grammar.txt).
+The rules are given in Greibach Normal Form with additional lookahead and
+semantic notation.
 
 
 ## Name
@@ -171,9 +152,8 @@ tribute to the work of computer scientist
 
 ## License
 
-This license applies to the Bach Python 3.4 Reference Implementation, and
-associated documentation. We do not claim to copyright Bach *as a language*;
-other implementations are encouraged!
+This license applies to the Bach Reference Implementations and associated
+documentation.
 
     Bach - a general-purpose semantic document markup language
 
@@ -197,3 +177,4 @@ other implementations are encouraged!
     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
+
