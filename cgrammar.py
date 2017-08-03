@@ -73,7 +73,7 @@ class ProductionRule():
         def inv(value, inverter):
             assert value <= 127
             if inverter:
-                return 0b10000000 & value
+                return 0b10000000 | value
             else:
                 return value
     
@@ -88,14 +88,14 @@ class ProductionRule():
         
         c = 0
         if self.capture:
-            c &= 0b10000000
+            c |= 0b10000000
         if self.captureStart:
-            c &= 0b01000000
+            c |= 0b01000000
         if self.captureEnd:
-            c &= 0b00100000
+            c |= 0b00100000
         
         assert self.captureAs <= 16
-        c &= self.captureAs
+        c |= self.captureAs
         
         b.append(c)
         
@@ -380,17 +380,17 @@ states = productionSymbolMapper.entries()
 assert states <= 127
 b.append(states)
 
-# Nonterminal String
+# Terminal String
 assert len(terminals) < 127
 b.append(len(terminals))
 b.extend(terminals.encode('latin1'))
 
-# Nonterminal Sets
+# Terminal Sets
 sets = terminalSetMapper.entries()
 assert sets < 127
 b.append(sets)
 
-# Nonterminal Sets index into string
+# Terminal Sets index into string
 for i in sorted(terminalSetMapper.ids, key=lambda x: terminalSetMapper.get(x)[0]):
     item = terminalSetMapper.get(i)[1]
     start = item.start
@@ -419,11 +419,11 @@ for i in b:
     checksum += i
     checksum %= 255
 
+b.append(checksum)
+
 print("#    State machine compiled to %d bytes" % len(b))
 print("#    Checksum: %d" % checksum)
 print("# HEX output follows.")
-
-b.append(checksum)
 
 def chop(str, num):
     # https://stackoverflow.com/a/5711460/275677

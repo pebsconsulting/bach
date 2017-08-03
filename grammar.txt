@@ -68,23 +68,23 @@
     # ID always 3, disallowed shorthand separators
     _dss        3  1 F # all sc except #
     
-    iws         3  2 5 # " \t\r"     # "inline" whitespace (whitespace excluding \n but including /r)
-    ws          4  2 6 # " \t\r\n"   # whitespace
-    bs          5  E F # "\\"        # backslash
-    lf          6  5 6 # "\n"       # UNIX linefeed ("\n")
-    sc          7  0 K # "#=\t\r\n ()[]<>\"'\\" # special characters (plus shorthand separators at runtime)
-    oqt         8  8 B # "\"['"      # opening quoted literal e.g. ", [, '
-    asgn        9  1 2 # "="         # assignment characters e.g. "="
-    scmt        A  0 1 # "#"         # single-line comments at start of document only
-    rb          B  7 8 # ")"         # right bracket
-    lb          C  6 7 # "("         # left bracket
-    dq          D  8 9 # "\""        # double quote
-    sq          E  9 A # "'"         # single quote
-    lbrace      F  A B # "["         # left brace
-    rbrace      G  B C # "]"         # right brace
-    dqesc       H  I K # "\\\""      # double quote escape
-    sqesc       I  E G # "\\'"       # singe quote escape  
-    rbraceesc   J  G I # "\\]"       # right brace escape
+    iws         4  2 5 # " \t\r"     # "inline" whitespace (whitespace excluding \n but including /r)
+    ws          5  2 6 # " \t\r\n"   # whitespace
+    bs          6  E F # "\\"        # backslash
+    lf          7  5 6 # "\n"       # UNIX linefeed ("\n")
+    sc          8  0 K # "#=\t\r\n ()[]<>\"'\\" # special characters (plus shorthand separators at runtime)
+    oqt         9  8 B # "\"['"      # opening quoted literal e.g. ", [, '
+    asgn        A  1 2 # "="         # assignment characters e.g. "="
+    scmt        B  0 1 # "#"         # single-line comments at start of document only
+    rb          C  7 8 # ")"         # right bracket
+    lb          D  6 7 # "("         # left bracket
+    dq          E  8 9 # "\""        # double quote
+    sq          F  9 A # "'"         # single quote
+    lbrace      G  A B # "["         # left brace
+    rbrace      H  B C # "]"         # right brace
+    dqesc       I  I K # "\\\""      # double quote escape
+    sqesc       J  E G # "\\'"       # singe quote escape  
+    rbraceesc   K  G I # "\\]"       # right brace escape
 
 
 [Production Rules]

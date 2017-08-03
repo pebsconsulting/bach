@@ -39,310 +39,310 @@
 #    special:eof: 1 0-0
 #    ss: 2 20-20
 #    _dss: 3 1-15
-#    iws: 3 2-5
-#    ws: 4 2-6
-#    bs: 5 14-15
-#    lf: 6 5-6
-#    sc: 7 0-20
-#    oqt: 8 8-11
-#    asgn: 9 1-2
-#    scmt: 10 0-1
-#    rb: 11 7-8
-#    lb: 12 6-7
-#    dq: 13 8-9
-#    sq: 14 9-10
-#    lbrace: 15 10-11
-#    rbrace: 16 11-12
-#    dqesc: 17 18-20
-#    sqesc: 18 14-16
-#    rbraceesc: 19 16-18
+#    iws: 4 2-5
+#    ws: 5 2-6
+#    bs: 6 14-15
+#    lf: 7 5-6
+#    sc: 8 0-20
+#    oqt: 9 8-11
+#    asgn: 10 1-2
+#    scmt: 11 0-1
+#    rb: 12 7-8
+#    lb: 13 6-7
+#    dq: 14 8-9
+#    sq: 15 9-10
+#    lbrace: 16 10-11
+#    rbrace: 17 11-12
+#    dqesc: 18 18-20
+#    sqesc: 19 14-16
+#    rbraceesc: 20 16-18
 # Section: [Production Rules]
 #    S => iws LF S
-#        (0 => 3, [3 0])
-#        if lookahead in lf (6)
+#        (0 => 4, [3 0])
+#        if lookahead in lf (7)
 #         as none (0)
 #    S => iws IWS LF S
-#        (0 => 3, [1 3 0])
-#        if lookahead not in lf (6)
+#        (0 => 4, [1 3 0])
+#        if lookahead not in lf (7)
 #         as none (0)
 #    IWS => iws 
-#        (1 => 3, [])
-#        if lookahead not in iws (3)
+#        (1 => 4, [])
+#        if lookahead not in iws (4)
 #         as none (0)
 #    IWS => iws IWS
-#        (1 => 3, [1])
-#        if lookahead in iws (3)
+#        (1 => 4, [1])
+#        if lookahead in iws (4)
 #         as none (0)
 #    S => lf S
-#        (0 => 6, [0])
+#        (0 => 7, [0])
 #        if lookahead not in special:none (0)
 #         as none (0)
 #    LF => lf 
-#        (3 => 6, [])
+#        (3 => 7, [])
 #        if lookahead not in special:none (0)
 #         as none (0)
 #    S => scmt C LF S
-#        (0 => 10, [4 3 0])
-#        if lookahead not in lf (6)
+#        (0 => 11, [4 3 0])
+#        if lookahead not in lf (7)
 #         as none (0)
 #    S => scmt LF S
-#        (0 => 10, [3 0])
-#        if lookahead in lf (6)
+#        (0 => 11, [3 0])
+#        if lookahead in lf (7)
 #         as none (0)
 #    C => ¬lf 
-#        (4 => ¬6, [])
-#        if lookahead in lf (6)
+#        (4 => ¬7, [])
+#        if lookahead in lf (7)
 #         as none (0)
 #    C => ¬lf C
-#        (4 => ¬6, [4])
-#        if lookahead not in lf (6)
+#        (4 => ¬7, [4])
+#        if lookahead not in lf (7)
 #         as none (0)
 #    RB => rb 
-#        (21 => 11, [])
+#        (21 => 12, [])
 #        if lookahead not in special:none (0)
 #         as none (0)
 #    WS => ws 
-#        (2 => 4, [])
-#        if lookahead not in ws (4)
+#        (2 => 5, [])
+#        if lookahead not in ws (5)
 #         as none (0)
 #    WS => ws 
-#        (2 => 4, [])
+#        (2 => 5, [])
 #        if lookahead in special:eof (1)
 #         as none (0)
 #    WS => ws WS
-#        (2 => 4, [2])
-#        if lookahead in ws (4)
+#        (2 => 5, [2])
+#        if lookahead in ws (5)
 #         as none (0)
 #    XSCC => ¬sc 
-#        (14 => ¬7, [])
-#        if lookahead in sc (7)
+#        (14 => ¬8, [])
+#        if lookahead in sc (8)
 #        [capture][capture end] as none (0)
 #    XSCC => ¬sc XSCC
-#        (14 => ¬7, [14])
-#        if lookahead not in sc (7)
+#        (14 => ¬8, [14])
+#        if lookahead not in sc (8)
 #        [capture] as none (0)
 #    S => ¬sc WS D
-#        (0 => ¬7, [2 11])
-#        if lookahead in ws (4)
+#        (0 => ¬8, [2 11])
+#        if lookahead in ws (5)
 #        [capture][capture start][capture end] as label (1)
 #    S => ¬sc XSCC D
-#        (0 => ¬7, [14 11])
-#        if lookahead not in sc (7)
+#        (0 => ¬8, [14 11])
+#        if lookahead not in sc (8)
 #        [capture][capture start] as label (1)
 #    D => ws D
-#        (11 => 4, [11])
-#        if lookahead not in ws (4)
+#        (11 => 5, [11])
+#        if lookahead not in ws (5)
 #         as none (0)
 #    D => ws 
-#        (11 => 4, [])
+#        (11 => 5, [])
 #        if lookahead in special:eof (1)
 #         as none (0)
 #    D => ws WS D
-#        (11 => 4, [2 11])
-#        if lookahead in ws (4)
+#        (11 => 5, [2 11])
+#        if lookahead in ws (5)
 #         as none (0)
 #    D => ss DSH D
 #        (11 => 2, [19 11])
-#        if lookahead not in sc (7)
+#        if lookahead not in sc (8)
 #        [capture][capture start][capture end] as shorthandSymbol (7)
 #    DSH => ¬sc 
-#        (19 => ¬7, [])
-#        if lookahead in sc (7)
+#        (19 => ¬8, [])
+#        if lookahead in sc (8)
 #        [capture][capture start][capture end] as shorthandAttrib (8)
 #    DSH => ¬sc XSCC
-#        (19 => ¬7, [14])
-#        if lookahead not in sc (7)
+#        (19 => ¬8, [14])
+#        if lookahead not in sc (8)
 #        [capture][capture start] as shorthandAttrib (8)
 #    SD => ss SDSH SD
 #        (16 => 2, [20 16])
-#        if lookahead not in sc (7)
+#        if lookahead not in sc (8)
 #        [capture][capture start][capture end] as shorthandSymbol (7)
 #    SDSH => ¬sc 
-#        (20 => ¬7, [])
-#        if lookahead in sc (7)
+#        (20 => ¬8, [])
+#        if lookahead in sc (8)
 #        [capture][capture start][capture end] as shorthandAttrib (8)
 #    SDSH => ¬sc XSCC
-#        (20 => ¬7, [14])
-#        if lookahead not in sc (7)
+#        (20 => ¬8, [14])
+#        if lookahead not in sc (8)
 #        [capture][capture start] as shorthandAttrib (8)
 #    D => ¬sc WS D
-#        (11 => ¬7, [2 11])
-#        if lookahead in ws (4)
+#        (11 => ¬8, [2 11])
+#        if lookahead in ws (5)
 #        [capture][capture start][capture end] as attribute (2)
 #    D => ¬sc XSCC D
-#        (11 => ¬7, [14 11])
-#        if lookahead not in sc (7)
+#        (11 => ¬8, [14 11])
+#        if lookahead not in sc (8)
 #        [capture][capture start] as attribute (2)
 #    SD => ¬sc WS SD
-#        (16 => ¬7, [2 16])
-#        if lookahead in ws (4)
+#        (16 => ¬8, [2 16])
+#        if lookahead in ws (5)
 #        [capture][capture start][capture end] as attribute (2)
 #    SD => ¬sc XSCC SD
-#        (16 => ¬7, [14 16])
-#        if lookahead not in sc (7)
+#        (16 => ¬8, [14 16])
+#        if lookahead not in sc (8)
 #        [capture][capture start] as attribute (2)
 #    SD => ¬sc SD
-#        (16 => ¬7, [16])
-#        if lookahead in rb (11)
+#        (16 => ¬8, [16])
+#        if lookahead in rb (12)
 #        [capture][capture start][capture end] as attribute (2)
 #    D => ¬sc ALSD
-#        (11 => ¬7, [18])
-#        if lookahead in asgn (9)
+#        (11 => ¬8, [18])
+#        if lookahead in asgn (10)
 #        [capture][capture start][capture end] as attribute (2)
 #    D => asgn LD
-#        (11 => 9, [12])
+#        (11 => 10, [12])
 #        if lookahead not in special:none (0)
 #        [capture][capture start][capture end] as assign (4)
 #    ALD => asgn LD
-#        (13 => 9, [12])
+#        (13 => 10, [12])
 #        if lookahead not in special:none (0)
 #        [capture][capture start][capture end] as assign (4)
 #    LD => ws LD
-#        (12 => 4, [12])
+#        (12 => 5, [12])
 #        if lookahead not in special:none (0)
 #         as none (0)
 #    SD => ¬sc ALSD
-#        (16 => ¬7, [18])
-#        if lookahead in asgn (9)
+#        (16 => ¬8, [18])
+#        if lookahead in asgn (10)
 #        [capture][capture start][capture end] as attribute (2)
 #    SD => asgn LSD
-#        (16 => 9, [17])
+#        (16 => 10, [17])
 #        if lookahead not in special:none (0)
 #        [capture][capture start][capture end] as assign (4)
 #    ALSD => asgn LSD
-#        (18 => 9, [17])
+#        (18 => 10, [17])
 #        if lookahead not in special:none (0)
 #        [capture][capture start][capture end] as assign (4)
 #    LSD => ws LSD
-#        (17 => 4, [17])
+#        (17 => 5, [17])
 #        if lookahead not in special:none (0)
 #         as none (0)
 #    D => lb SDS D
-#        (11 => 12, [15 11])
+#        (11 => 13, [15 11])
 #        if lookahead not in special:none (0)
 #        [capture][capture start][capture end] as subdocStart (5)
 #    SDS => ws SDS
-#        (15 => 4, [15])
+#        (15 => 5, [15])
 #        if lookahead not in special:none (0)
 #         as none (0)
 #    SDS => ¬sc WS SD
-#        (15 => ¬7, [2 16])
-#        if lookahead in ws (4)
+#        (15 => ¬8, [2 16])
+#        if lookahead in ws (5)
 #        [capture][capture start][capture end] as label (1)
 #    SDS => ¬sc XSCC SD
-#        (15 => ¬7, [14 16])
-#        if lookahead not in sc (7)
+#        (15 => ¬8, [14 16])
+#        if lookahead not in sc (8)
 #        [capture][capture start] as label (1)
 #    SDS => ¬sc SD
-#        (15 => ¬7, [16])
-#        if lookahead in rb (11)
+#        (15 => ¬8, [16])
+#        if lookahead in rb (12)
 #        [capture][capture start][capture end] as label (1)
 #    SD => lb SDS SD
-#        (16 => 12, [15 16])
+#        (16 => 13, [15 16])
 #        if lookahead not in special:none (0)
 #        [capture][capture start][capture end] as subdocStart (5)
 #    SD => rb 
-#        (16 => 11, [])
+#        (16 => 12, [])
 #        if lookahead not in special:none (0)
 #        [capture][capture start][capture end] as subdocEnd (6)
 #    SD => ws SD
-#        (16 => 4, [16])
+#        (16 => 5, [16])
 #        if lookahead not in special:none (0)
 #         as none (0)
 #    D => dq LDQ D
-#        (11 => 13, [6 11])
+#        (11 => 14, [6 11])
 #        if lookahead not in special:none (0)
 #        [capture start] as literal (3)
 #    D => sq LSQ D
-#        (11 => 14, [5 11])
+#        (11 => 15, [5 11])
 #        if lookahead not in special:none (0)
 #        [capture start] as literal (3)
 #    D => lbrace LBQ D
-#        (11 => 15, [7 11])
+#        (11 => 16, [7 11])
 #        if lookahead not in special:none (0)
 #        [capture start] as literal (3)
 #    LD => dq LDQ D
-#        (12 => 13, [6 11])
+#        (12 => 14, [6 11])
 #        if lookahead not in special:none (0)
 #        [capture start] as literal (3)
 #    LD => sq LSQ D
-#        (12 => 14, [5 11])
+#        (12 => 15, [5 11])
 #        if lookahead not in special:none (0)
 #        [capture start] as literal (3)
 #    LD => lbrace LBQ D
-#        (12 => 15, [7 11])
+#        (12 => 16, [7 11])
 #        if lookahead not in special:none (0)
 #        [capture start] as literal (3)
 #    SD => dq LDQ SD
-#        (16 => 13, [6 16])
+#        (16 => 14, [6 16])
 #        if lookahead not in special:none (0)
 #        [capture start] as literal (3)
 #    SD => sq LSQ SD
-#        (16 => 14, [5 16])
+#        (16 => 15, [5 16])
 #        if lookahead not in special:none (0)
 #        [capture start] as literal (3)
 #    SD => lbrace LBQ SD
-#        (16 => 15, [7 16])
+#        (16 => 16, [7 16])
 #        if lookahead not in special:none (0)
 #        [capture start] as literal (3)
 #    LSD => dq LDQ SD
-#        (17 => 13, [6 16])
+#        (17 => 14, [6 16])
 #        if lookahead not in special:none (0)
 #        [capture start] as literal (3)
 #    LSD => sq LSQ SD
-#        (17 => 14, [5 16])
+#        (17 => 15, [5 16])
 #        if lookahead not in special:none (0)
 #        [capture start] as literal (3)
 #    LSD => lbrace LBQ SD
-#        (17 => 15, [7 16])
+#        (17 => 16, [7 16])
 #        if lookahead not in special:none (0)
 #        [capture start] as literal (3)
 #    LDQ => dq 
-#        (6 => 13, [])
+#        (6 => 14, [])
 #        if lookahead not in special:none (0)
 #        [capture end] as none (0)
 #    LSQ => sq 
-#        (5 => 14, [])
+#        (5 => 15, [])
 #        if lookahead not in special:none (0)
 #        [capture end] as none (0)
 #    LBQ => rbrace 
-#        (7 => 16, [])
+#        (7 => 17, [])
 #        if lookahead not in special:none (0)
 #        [capture end] as none (0)
 #    LDQ => ¬dqesc LDQ
-#        (6 => ¬17, [6])
+#        (6 => ¬18, [6])
 #        if lookahead not in special:none (0)
 #        [capture] as none (0)
 #    LSQ => ¬sqesc LSQ
-#        (5 => ¬18, [5])
+#        (5 => ¬19, [5])
 #        if lookahead not in special:none (0)
 #        [capture] as none (0)
 #    LBQ => ¬rbraceesc LBQ
-#        (7 => ¬19, [7])
+#        (7 => ¬20, [7])
 #        if lookahead not in special:none (0)
 #        [capture] as none (0)
 #    LDQ => bs LDQESC LDQ
-#        (6 => 5, [9 6])
+#        (6 => 6, [9 6])
 #        if lookahead not in special:none (0)
 #         as none (0)
 #    LSQ => bs LSQESC LDQ
-#        (5 => 5, [8 6])
+#        (5 => 6, [8 6])
 #        if lookahead not in special:none (0)
 #         as none (0)
 #    LBQ => bs LBQESC LDQ
-#        (7 => 5, [10 6])
+#        (7 => 6, [10 6])
 #        if lookahead not in special:none (0)
 #         as none (0)
 #    LDQESC => dqesc 
-#        (9 => 17, [])
+#        (9 => 18, [])
 #        if lookahead not in special:none (0)
 #        [capture] as none (0)
 #    LSQESC => sqesc 
-#        (8 => 18, [])
+#        (8 => 19, [])
 #        if lookahead not in special:none (0)
 #        [capture] as none (0)
 #    LBQESC => rbraceesc 
-#        (10 => 19, [])
+#        (10 => 20, [])
 #        if lookahead not in special:none (0)
 #        [capture] as none (0)
 # State Transitions
@@ -374,20 +374,20 @@
 #    72 State Transitions / Rules
 #    21 sets of terminal characters defined by a mapping into 20 chars
 # Compiling...
-#    State machine compiled to 549 bytes
-#    Checksum: 98
+#    State machine compiled to 550 bytes
+#    Checksum: 78
 # HEX output follows.
 626163682d6367311614233d20090d0a282922275b5d3c3e5c275c5b5c2215000000001414010f02
 0502060e0f05060014080b01020001070806070809090a0a0b0b0c12140e1010120007070209030c
-010d020f0312031503180119011a011b0c27042b012c022e04320c3e044201430245024701030300
-ff06000301030000000600ffff00000a04030000000a0300ff060000020bff0400000e0bff000003
-ffffff00000301ffff030004ffffff000004ffffff01000402ffff040006ffffff000000ffffff06
-000004ffff00000effffff00000005ffff0000050806ff00000dffffff00000006ffff0000050906
-ff000010ffffff00000007ffff0000050a06ff000012ffffff000011ffffff000013ffffff000004
-0bffff000004ffffff010004020bff040002130bff000000020bff0400000e0bff00000012ffff09
-00090cffff00000c0f0bff00000d060bff00000e050bff00000f070bff0000040cffff00000d060b
-ff00000e050bff00000f070bff0000090cffff000000ffffff0700000effff0000040fffff000000
-0210ff0400000e10ff00000010ffff0b00021410ff0000000210ff0400000e10ff00000010ffff0b
-000012ffff09000911ffff00000c0f10ff00000bffffff00000410ffff00000d0610ff00000e0510
-ff00000f0710ff00000411ffff00000d0610ff00000e0510ff00000f0710ff00000911ffff000000
-ffffff0700000effff000000ffffff0700000effff00000bffffff000062
+010d020f0312031503180119011a011b0c27042b012c022e04320c3e044201430245024701040300
+ff07000401030087000700ffff80000b04030087000b0300ff070088020bff05e1880e0bff88c104
+ffffff84000401ffff040005ffffff850005ffffff01000502ffff050007ffffff800087ffffff07
+008704ffff87000fffffff80209305ffff8080060806ff80000effffff80209206ffff8080060906
+ff800011ffffff80209407ffff8080060a06ff800013ffffff808012ffffff808014ffffff808005
+0bffff850005ffffff010005020bff050002130bff88e788020bff05e2880e0bff88c28812ffff0a
+e20a0cffff80e40d0f0bff80e50e060bff80430f050bff804310070bff8043050cffff80000e060b
+ff80430f050bff804310070bff80430a0cffff80e488ffffff08a0880effff8880050fffff800088
+0210ff05e1880e10ff88c18810ffff0ce1021410ff88e7880210ff05e2880e10ff88c28810ffff0c
+e28812ffff0ae20a11ffff80e40d0f10ff80e50cffffff80e60510ffff80000e0610ff80430f0510
+ff8043100710ff80430511ffff80000e0610ff80430f0510ff8043100710ff80430a11ffff80e488
+ffffff08e8880effff88c888ffffff08e8880effff88c80cffffff80004e
