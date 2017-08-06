@@ -9,18 +9,22 @@ Bach is for anyone hand-authoring structured semantic text that is parsed into
 a data structure to be transformed programmatically. It is fully interoperable
 with your existing XML-based tooling, but it's a lot nicer to read and write!
 
-Our key use cases for Bach are multilingual documents, technical
-documentation, and static website generators.
+This repository contains the language definition, a pure Python (3.4) parser
+as a reference implementation, a C parser (soon!) and test suite (soon!).
 
 
 ## Key Features
 
-### Convert to and from XML, Python Literals, Python XML Element Trees
 
-Bach documents have a 1:1 mapping between XML; a recursive data structure made
-up of native Python types and string literals; Python Element Trees, and more.
+### Convert to and from XML and native language types
+
 Use Bach with all the powerful tools you expect, like XLST, XQuery, DTD and
 XML Schemas.
+
+Bach documents have a 1:1 mapping between several formats including XML, XHTML,
+Python literals, Python LXML Element Trees, "the subset of Lisp data where the
+first item in a list is required to be atomic", and more.
+
 
 ### Shorthand attribute syntax configurable at parse-time
 
@@ -29,22 +33,24 @@ A special "shorthand" syntax can expand attributes like `.myClass` into
 including (soon) customisable encoding of lists and sets e.g. how to combine
 multiple CSS classes into one attribute.
 
+
 ### Efficient portable parser
 
-The language grammar is formally defined and compiled into a compact portable
-representation, making it easy to parse Bach documents in your chosen language.
-
 Bach documents are parseable in linear time to the length of the input and one
-byte of lookahead i.e. with an LL(1) parser.
+byte of lookahead i.e. with an LL(1) parser such as a deterministic pushdown
+automaton (DPDA).
 
-This repository contains reference implementations for both Python (>=3.4) and
-(soon!) C.
+The language grammar is formally defined in a machine-readable document,
+then compiled into a compact portable representation. This makes it simpler
+and quicker to write a Bach parser in your chosen language.
+
 
 ## Examples
 
 Here is a basic example without XML namespaces.
 
-    document
+    people
+        author="Anne Editor"
     
     (person
         (name
@@ -55,51 +61,57 @@ Here is a basic example without XML namespaces.
             (aliases)
         )
         (dob        "19061209")
-        (bio
-            "Grace Brewster Murray Hopper was an American "
+        (summary
+            "Grace Brewster Murray Hopper was an American"
             (wiki "computer scientist")
-            " and United States Navy rear admiral."
+            "and United States Navy rear admiral."
 
             src="https://en.wikipedia.org/wiki/Grace_Hopper"
         )
     )
 
+
 Here's an example with XML namespaces:
 
     # Example based on https://msdn.microsoft.com/en-us/library/aa468565.aspx
 
-    document
-        xmlns:d="http://www.develop.com/student"
+    d:student
+        xmlns:d="https://www.example.org/student"
+        xmlns:p='https://www.example.org/programming-language'
     
-        (d:student
-            (d:id       "3235329")
-            (d:name     "Jeff Smith")
-            (d:language "Python")
-            (d:rating   "9.5")
-        )
+    (d:id        "3235329")
+    (d:name      "Jeff Smith")
+    (p:languages "Python" "C" "Haskell")
+    (d:rating    "9.5")
 
 
 Here's a contrived HTML4-style example:
 
     html
-        (meta
-            (title "Hello World")
-            (description "My Example Website!")
-        )
-    
-        (div #header
-            (a href="/" (img src="/logo.png" "Example.org Logo"))
-        )
 
-        (div #body
-            (div.left
-                (span.bold "Welcome") " to Example.org!")
-            )
+    (meta
+        (title "Hello World!")
+        (description "My Example Website!")
+    )
+
+    (div #header
+        (a href="/"
+            (img src="/logo.png" "Example.org Logo")
         )
-        
-        (div #foot
-            (p "Copyright © Example Organisation")
+    )
+
+    (div #body
+        (div.aside
+            (p "Welcome to" (span.bold "Example Website!"))
         )
+        (div.main
+            (h1 #title "Hello World!")
+        )
+    )
+    
+    (div #foot
+        (p "Copyright © Example Organisation")
+    )
 
 
 # Syntax and Semantics
@@ -155,8 +167,14 @@ a value such as `Null` or `None` (as distrinct from the empty string).
     (item anAttributeWithNoValue)
 
 Subdocuments start and end with brackets. They are always non-empty.
+String literals and subdocuments may always mix.
 
     document (subdocument "a literal" (anotherSubdocument) "another literal")
+
+Bach string literals and subdocuments follow XHTML-style whitespace
+normalisation rules for mixed content types (aka `xs:complexType mixed="true"`,
+prevent this with `xml:space="preserve"`; you may like to configure Bach
+with a dedicated shorthand syntax to do this).
 
 
 ## Open Standard

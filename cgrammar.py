@@ -1,5 +1,10 @@
 # Compile grammar to a portable and efficient binary representation
 
+# Specifically, we compile a grammar given in Greibach Normal Form with a
+# single character lookahead plus annotations for capture semantics, to
+# a representation easily usable as a model of a LL(1) Deterministic Pushdown
+# Automaton.
+
 # Usage: cat grammar.txt | python3 ./cgrammar.py > compiled-grammar.txt
 
 import sys
@@ -421,7 +426,7 @@ for i in b:
 
 b.append(checksum)
 
-print("#    State machine compiled to %d bytes" % len(b))
+print("#    Compiled to %d bytes" % len(b))
 print("#    Checksum: %d" % checksum)
 print("# HEX output follows.")
 

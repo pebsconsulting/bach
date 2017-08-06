@@ -1,10 +1,12 @@
 import binascii
-import bach
 
 
-# This is a compiled representation of the state machine representing the
-# Bach language. See grammar.txt
+
 class CompiledGrammar():
+    """This is a compiled representation of a Deterministic Pushdown Automaton
+    (DPDA) for a formal grammar representing the Bach language.
+
+    See grammar.txt for the source and cgrammar.py for the compiler."""
     
     # Special fixed IDs for terminal sets
     TERMINAL_SET_NONE_ID = 0 # empty set
@@ -140,8 +142,10 @@ ffffff08e8880effff88c888ffffff08e8880effff88c80cffffff80004e
         self.ruleBytes     = 6
 
 
+
 class CompiledProduction():
-    # A Production Rule for a given state
+    """This class represents a compiled representation of a production rule
+    in a CompiledGrammar"""
 
     @staticmethod
     def unpack(data, ProductionType):
@@ -176,4 +180,5 @@ class CompiledProduction():
         cas = x & 0b00011111
 
         return c, cstart, cend, cas
+
 

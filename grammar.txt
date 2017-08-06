@@ -1,7 +1,7 @@
 # Bach language syntax
 
 # This is a machine-readable document so that we can compile grammar to a
-# language-portable and efficient binary representation
+# language-portable and efficient binary representation.
 
 # Usage: cat grammar.txt | python3 ./cgrammar.py > compiled-grammar.txt
 

@@ -1,4 +1,11 @@
 import bach
+import io
+import sys
+
+# Example Usage:
+#     $ echo "document" | python3 ./example.py
+#     $ cat document | python3 ./example.py
+
 
 # HTML-style shorthands
 shorthands = [
@@ -15,7 +22,14 @@ shorthands = [
 ]
 
 # Configure the parser to use these shorthands
-foo = bach.Parser(shorthands)
+parser = bach.Parser(shorthands)
 
+#  Get stdin as a unicode stream
+fp = io.TextIOWrapper(sys.stdin.buffer, encoding=sys.stdin.encoding)
+
+# Parse the input stream
+parser.parse(fp)
+
+# -- You can use a string too, e.g: parser.parse("document 'example'")
 
 

@@ -1,5 +1,44 @@
+import io
+import bach.io
+import enum
+
 from functools import reduce
 from bach.unpack import CompiledGrammar, CompiledProduction
+
+
+
+@enum.unique
+class CaptureSemantic(enum.Enum):
+    """Semantics captured at the level of the grammar that lets us know how
+       a token should be used depending on the state of the lexer at the time
+       it was captured."""
+
+#   -- The numbers MUST match the section [Capture Semantics] in grammar.txt
+
+    none            = 0
+    label           = 1
+    attribute       = 2
+    literal         = 3
+    assign          = 4
+    subdocStart     = 5
+    subdocEnd       = 6
+    shorthandSymbol = 7
+    shorthandAttrib = 8
+
+
+
+class Position():
+    def __init__(self, line, column):
+        self.line = line
+        self.column = column
+
+
+class Token():
+    def __init__(self, semantic, lexeme, position):
+        self.semantic = semantic
+        self.lexeme   = lexeme
+        self.position = position
+
 
 
 class Production():
@@ -35,10 +74,15 @@ class Shorthand():
         self.collectionSplit = collectionSplit
 
 
+
 class Parser():
-    sm = CompiledGrammar()
+    atomaton = CompiledGrammar()
 
     def __init__(self, shorthands=[]):
+        """Configure and construct a new parser for a Bach document.
+
+        Pass a list of bach.Shorthand objects as the second parameter to extend
+        the syntax of the parser with custom shorthand attributes."""
 
         # Construct a table for runtime-configurable shorthand syntax
         # as a list of tuples (symbol, shorthand) with each symbol unique
@@ -62,10 +106,28 @@ class Parser():
 
         # a list of all production rule lists, ordered by state ID
         self.states = list(self.sm.states(Production))
+    
 
-#        for i in range(0, len(self.states)):
-#            print("[STATE %d]" % i)
-#            for j in self.states[i]:
-#                print(j)
+    def lex(self, reader):
+
+        # N.B. Performance - lex() relies on `list.append(char), "".join(list)`
+        # being generally the most efficient way to grow a string in Python.
+
+        # Initialise the automaton stack with the start state (ID always 0).
+        state = bach.io.stack([0])
+
+        # Iterate over the current character and a single lookahead - LL(1)
+        for (current, lookahead) in bach.io.pairwise(reader):
+            # lookahead may be None if EOF, but current is never None
+
+            print("%s, lookahead %s" % (repr(current), repr(lookahead)))
+            continue
+
+
+    def parse(self, src, bufsize=bach.io.DEFAULT_BUFFER_SIZE):
+        
+        reader = bach.io.reader(src, bufsize)()
+        tokens = self.lex(reader)
+        
 
 
