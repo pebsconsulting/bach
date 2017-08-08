@@ -224,3 +224,19 @@ LSQESC => sqesc               ;                     C
 LBQESC => rbraceesc           ;                     C
 
 
+[End States]
+
+# We can "lookahead" for End Of File, but EOF is not acceptable as a production
+# non-terminal.
+
+# Our language is like the C programming language in that it expects a document
+# to end with trailing whitespace (like a new line).
+
+# This special list denotes special states where an immediate EOF without a
+# matching rule can be acceptable.
+
+# For our purposes, this is exactly a list of one state, D.
+
+    D
+
+

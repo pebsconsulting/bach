@@ -345,6 +345,8 @@
 #        (10 => 20, [])
 #        if lookahead not in special:none (0)
 #        [capture] as none (0)
+# Section: [End States]
+#    D: 11
 # State Transitions
 #    state 0 has 7 rules starting at offset 0
 #    state 1 has 2 rules starting at offset 7
@@ -374,8 +376,8 @@
 #    72 State Transitions / Rules
 #    21 sets of terminal characters defined by a mapping into 20 chars
 # Compiling...
-#    State machine compiled to 550 bytes
-#    Checksum: 78
+#    Compiled to 552 bytes
+#    Checksum: 90
 # HEX output follows.
 626163682d6367311614233d20090d0a282922275b5d3c3e5c275c5b5c2215000000001414010f02
 0502060e0f05060014080b01020001070806070809090a0a0b0b0c12140e1010120007070209030c
@@ -390,4 +392,4 @@ ff80430f050bff804310070bff80430a0cffff80e488ffffff08a0880effff8880050fffff800088
 0210ff05e1880e10ff88c18810ffff0ce1021410ff88e7880210ff05e2880e10ff88c28810ffff0c
 e28812ffff0ae20a11ffff80e40d0f10ff80e50cffffff80e60510ffff80000e0610ff80430f0510
 ff8043100710ff80430511ffff80000e0610ff80430f0510ff8043100710ff80430a11ffff80e488
-ffffff08e8880effff88c888ffffff08e8880effff88c80cffffff80004e
+ffffff08e8880effff88c888ffffff08e8880effff88c80cffffff8000010b5a

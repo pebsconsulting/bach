@@ -6,6 +6,15 @@ from functools import reduce
 from bach.unpack import CompiledGrammar, CompiledProduction
 
 
+class ParseError(RuntimeError):
+    def __init__(self, reason, pos):
+        self.line   = pos.line
+        self.column = pos.column
+        self.reason = reason
+        super().__init__("Bach Parse Error at (%d:%d): %s" % \
+            (self.line, self.column, reason))
+
+
 
 @enum.unique
 class CaptureSemantic(enum.Enum):
@@ -28,12 +37,28 @@ class CaptureSemantic(enum.Enum):
 
 
 class Position():
+
     def __init__(self, line, column):
         self.line = line
         self.column = column
 
+    def advanceColumn(self):
+        self.column += 1
+    
+    def advanceLine(self):
+        self.line += 1
+        self.column = 1
+
+    def copy(self):
+        return Position(self.line, self.column)
+
+    def __repr__(self):
+        return "<bach.Position (line %d, col %d)>" % (self.line, self.column)
+
+
 
 class Token():
+
     def __init__(self, semantic, lexeme, position):
         self.semantic = semantic
         self.lexeme   = lexeme
@@ -42,19 +67,34 @@ class Token():
 
 
 class Production():
+
     def __init__(self, terminalIdPair, lookaheadIdPair, nonterminals, captureMode):
-        self.terminalIdPair = terminalIdPair   # Terminal Set ID, Invert?
-        self.lookaheadIdPair = lookaheadIdPair # Terminal Set ID, Invert?
-        self.nonterminals = nonterminals       # List of up to 3 NonTerminal IDs
+        self.terminalIdPair  = terminalIdPair   # Terminal Set ID, Invert?
+        self.lookaheadIdPair = lookaheadIdPair  # Terminal Set ID, Invert?
+        self.nonterminals    = nonterminals     # List of up to 3 NonTerminal IDs
 
         # capture?, capture start?, capture end?, capture semantic ID
         self.captureMode = captureMode
+
+
+    def capture(self):
+        return self.captureMode[0]
+
+    def captureStart(self):
+        return self.captureMode[1]
+
+    def captureEnd(self):
+        return self.captureMode[2]
+
+    def captureAs(self):
+        return CaptureSemantic(self.captureMode[3])
+
 
     def __repr__(self):
         return "bach.Production => %s%s %s, lookahead %s%s, capture %s/%s/%s as %d" % (\
             "¬" if self.terminalIdPair[1] else "",
             self.terminalIdPair[0],
-            ' '.join(map(str, self.nonterminals)),
+            ' '.join(map(str, reversed(self.nonterminals))),
             "¬" if self.lookaheadIdPair[1] else "",
             self.lookaheadIdPair[0],
             self.captureMode[0],
@@ -63,8 +103,39 @@ class Production():
             self.captureMode[3])
 
 
+    def matchTerminalPair(self, parser, pair, char):
+        
+        setId, invert = pair
+
+        # special case: None = End of File
+            # terminal set "special:eof" is always defined with ID=1
+        if (setId == 1):
+            if char is None:
+                return not invert # (invert is always False in the current grammar)
+            else:
+                return False
+        
+        if char is None:
+            # otherwise, EOF is not in the set nor its inverse
+            return False
+
+        terminalSet = parser.terminalSets[setId]
+
+        if invert:
+            return not char in terminalSet
+        else:
+            return char in terminalSet
+
+
+    def match(self, parser, current, lookahead):
+        return \
+            self.matchTerminalPair(parser, self.terminalIdPair, current) and \
+            self.matchTerminalPair(parser, self.lookaheadIdPair, lookahead)
+
+
 
 class Shorthand():
+
     def __init__(self, symbol, expansion, collectionType=None, collectionSplit=" "):
         assert len(symbol) == 1, "Symbol must be a single character"
         assert collectionType in (list, set, None), "CollectionType must be List, Set, or None"
@@ -90,7 +161,7 @@ class Parser():
         for x in shorthands:
             assert not (x.symbol, x) in self.shorthands, \
                 "Duplicate shorthand symbol specified"
-            assert self.sm.allowableShorthandSymbol(x.symbol), \
+            assert self.atomaton.allowableShorthandSymbol(x.symbol), \
                 "Unicode code point %d disallowed for shorthand" % ord(x.symbol)
             self.shorthands.append((x.symbol, x))
 
@@ -99,14 +170,17 @@ class Parser():
 
         # a list of all sets of terminal symbols, ordered by set ID,
         # and patched with runtime-configured values
-        self.terminalSets = list(self.sm.terminalSets(shorthandSymbolString))
+        self.terminalSets = list(self.atomaton.terminalSets(shorthandSymbolString))
 
         # a string of all terminal symbols for quick membership tests
-        self.terminals = ''.join(set(self.sm.terminals() + shorthandSymbolString))
+        self.terminals = ''.join(set(self.atomaton.terminals() + shorthandSymbolString))
 
         # a list of all production rule lists, ordered by state ID
-        self.states = list(self.sm.states(Production))
+        self.states = list(self.atomaton.states(Production))
     
+        # a list of special allowable end states (in addition to None)
+        self.endStates = self.atomaton.endStates
+
 
     def lex(self, reader):
 
@@ -116,18 +190,79 @@ class Parser():
         # Initialise the automaton stack with the start state (ID always 0).
         state = bach.io.stack([0])
 
+        # An offset into the stream for user-friendly error reporting
+        pos = Position(1, 0)
+        startPos = None
+
+        # a list of characters used to build a token when capturing
+        capture = []
+        captureAs = CaptureSemantic.none
+
         # Iterate over the current character and a single lookahead - LL(1)
         for (current, lookahead) in bach.io.pairwise(reader):
-            # lookahead may be None if EOF, but current is never None
 
-            print("%s, lookahead %s" % (repr(current), repr(lookahead)))
-            continue
+            # Current is always a single Unicode character, but lookahead may be
+            # None iff the end of the stream is reached
+
+            if current == '\n':
+                pos.advanceLine()
+            elif current == '\r':
+                pass
+            else:
+                pos.advanceColumn()
+
+            matchedRule = False
+            currentState = state.peek()
+            assert currentState is not None
+
+            # For each production rule from this state...
+            for production in self.states[currentState]:
+
+                # See if it matches current and lookahead
+                if production.match(self, current, lookahead):
+
+                    matchedRule = True
+
+                    if production.captureStart():
+                        capture = []
+                        startPos = pos.copy()
+                        captureAs = production.captureAs()
+                        
+                    
+                    if production.capture():
+                        capture.append(current)
+
+                    if production.captureEnd():
+                        assert startPos is not None
+                        yield (captureAs, ''.join(capture), startPos.copy(), pos.copy())
+                        startPos is None
+
+                    
+                    state.pop()
+                    
+                    for nt in production.nonterminals:
+                        state.push(nt)
+
+
+            if not matchedRule:
+                helpCurrent = hex(ord(current))
+                helpLookahead = hex(ord(lookahead)) if lookahead is not None else 'EOF'
+                raise ParseError("Unexpected input %s, %s in state %d" % \
+                    (helpCurrent, helpLookahead, currentState), pos)
+
+
+        # special case - e.g. allow EOF at D without trailing whitespace
+        finalState = state.peek()
+        if finalState is not None and finalState not in self.endStates:
+            raise ParseError("Unexpected end of file in state %d" % currentState, pos)
 
 
     def parse(self, src, bufsize=bach.io.DEFAULT_BUFFER_SIZE):
         
         reader = bach.io.reader(src, bufsize)()
-        tokens = self.lex(reader)
+
+        for token in self.lex(reader):
+            print(repr(token))
         
 
 

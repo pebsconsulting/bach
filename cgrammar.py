@@ -85,6 +85,7 @@ class ProductionRule():
         b = []
         b.append(inv(self.terminalSetId, self.invertTerminalSet))
         b.extend(self.nonterminalIds)
+
         if len(self.nonterminalIds) < 3:
             b.extend([255] * (3 - len(self.nonterminalIds)))
             # ID 255 marks end of rule
@@ -235,6 +236,7 @@ productionSymbolMapper = IDMapper()
 captureSemanticMapper  = IDMapper()
 terminalSetMapper      = TerminalSets()
 productionRules        = ProductionRules()
+endStates              = []
 
 
 print("# Lines beginning with # are for human debugging information only")
@@ -269,6 +271,13 @@ for line in sys.stdin:
         print("#    %s: %d %d-%d" % (name, id, start, end))
         terminalSetMapper.add(name, id, TerminalSet(start, end))
     
+    elif mode == 'End States':
+        endState = lineparse(line)[0][0] # clause 0, part 0
+        endStateId = productionSymbolMapper.idof(endState)
+        endStates.append(endStateId)
+        print("#    %s: %d" % (endState, endStateId))
+
+
     elif mode == 'Production Rules':
         p = lineparse(line)
         rule = p[0]
@@ -418,6 +427,12 @@ for i in range(0, states):
 for i in range(0, states):
     for j in range(0, numRulesForState[i]):
         b.extend(productionRules.get(i)[j].pack())
+
+# Special End States
+b.append(len(endStates))
+for i in sorted(endStates):
+    assert i < 127
+    b.append(i)
 
 checksum = 0
 for i in b:

@@ -28,7 +28,7 @@ ff80430f050bff804310070bff80430a0cffff80e488ffffff08a0880effff8880050fffff800088
 0210ff05e1880e10ff88c18810ffff0ce1021410ff88e7880210ff05e2880e10ff88c28810ffff0c
 e28812ffff0ae20a11ffff80e40d0f10ff80e50cffffff80e60510ffff80000e0610ff80430f0510
 ff8043100710ff80430511ffff80000e0610ff80430f0510ff8043100710ff80430a11ffff80e488
-ffffff08e8880effff88c888ffffff08e8880effff88c80cffffff80004e
+ffffff08e8880effff88c888ffffff08e8880effff88c80cffffff8000010b5a
 """
 
     def __init__(self):
@@ -78,7 +78,7 @@ ffffff08e8880effff88c888ffffff08e8880effff88c80cffffff80004e
                 yield shorthandSeparators
             else:
                 start = self.data[index]
-                end   = self.data[index]
+                end   = self.data[index+1]
                 yield self.terminalString[start:end]
             index += 2
 
@@ -141,6 +141,11 @@ ffffff08e8880effff88c888ffffff08e8880effff88c80cffffff80004e
         self.offsetToRules = index
         self.ruleBytes     = 6
 
+        # end states list
+        index = self.offsetToRules + (self.ruleBytes * totalRules) 
+        numEndStates = data[index]
+        self.endStates = [x for x in data[index+1:index+1+numEndStates]]
+
 
 
 class CompiledProduction():
@@ -158,7 +163,8 @@ class CompiledProduction():
 
     @staticmethod
     def ids(xs):
-        for i in xs:
+        # N.B. rules are pushed onto the stack in reverse order!!!
+        for i in reversed(xs):
             if i != 255:
                 yield i
 
