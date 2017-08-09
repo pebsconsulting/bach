@@ -167,10 +167,9 @@ followed by a string literal. Whitespace is optional.
     anAttribute = "a value"
 
 The assignment may be ommitted, in which case the attribute is present but with
-a value such as `Null` or `None` (as distrinct from the empty string).
-***This behaviour may change for XML compatibility***
+an empty string value. ***This behaviour changed for XML compatibility***
 
-    (item anAttributeWithNoValue)
+    (item anAttributeWithEmptyValue)
 
 Subdocuments start and end with brackets. They are always non-empty.
 String literals and subdocuments may always mix.
