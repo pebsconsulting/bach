@@ -331,7 +331,7 @@ class Parser():
         # special case - e.g. allow EOF at D without trailing whitespace
         finalState = state.peek()
         if finalState is not None and finalState not in self.endStates:
-            raise ParseError("Unexpected end of file in state %d" % currentState, startPos, pos)
+            raise ParseError("Unexpected end of file in state %d" % finalState, startPos, pos)
 
 
     def parse(self, src, bufsize=bach.io.DEFAULT_BUFFER_SIZE):
