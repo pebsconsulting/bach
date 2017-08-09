@@ -7,12 +7,12 @@ from bach.unpack import CompiledGrammar, CompiledProduction
 
 
 class ParseError(RuntimeError):
-    def __init__(self, reason, pos):
-        self.line   = pos.line
-        self.column = pos.column
+    def __init__(self, reason, startPos, endPos):
+        self.start  = startPos
+        self.end    = endPos
         self.reason = reason
-        super().__init__("Bach Parse Error at (%d:%d): %s" % \
-            (self.line, self.column, reason))
+        super().__init__("Bach Parse Error (at %d:%d to %d:%d): %s" % \
+            (self.start.line, self.start.column, self.end.line, self.end.column, reason))
 
 
 
@@ -59,10 +59,71 @@ class Position():
 
 class Token():
 
-    def __init__(self, semantic, lexeme, position):
-        self.semantic = semantic
-        self.lexeme   = lexeme
-        self.position = position
+    def __init__(self, semantic, lexeme, start, end):
+        self.semantic = semantic    # type CaptureSemantic
+        self.lexeme   = lexeme      # type str
+        self.start    = start       # type Position
+        self.end      = end         # type Position
+
+
+
+class Document():
+
+    def __init__(self):
+        self.label = None    # A str
+        self.attributes = {} # A dict of names to a list of values non-None str
+        self.children   = [] # A list of Document or str children
+
+
+    def setLabel(self, label):
+        assert self.label is None
+        self.label = label
+
+
+    def addChild(self, child):
+        self.children.append(child)
+
+
+    def addAttribute(self, shorthand, attributeName, attributeValue, startPos, endPos):
+
+        assert isinstance(attributeValue, str)
+
+        if shorthand:
+            attributeName = shorthand.expansion
+
+        if attributeName not in self.attributes:
+            self.attributes[attributeName] = []
+        
+        if shorthand:
+
+            # Values can occur multiple times in a list
+            if shorthand.collectionType is list:
+                pass # OK!
+
+            # Values can occur only once in a set
+            elif shorthand.collectionType is set:
+                if attributeValue in self.attributes[attributeName]:
+                    return # already in set, skip to success
+
+            # Only one value is permitted for this attribute
+            elif shorthand.collectionType is None:
+                if len(self.attributes[attributeName]):
+                    raise BachParseError(
+                        "Multiple values not allowed for this shorthand attribute",
+                        startPos, endPos)
+            
+            else:
+                # should never happen
+                raise TypeError("Unknown shorthand.collectionType")
+
+
+        self.attributes[attributeName].append(attributeValue)
+        return True
+
+
+    def __repr__(self):
+        return "<bach.Document: %s %s %s>" % \
+            (self.label, self.attributes, self.children)
 
 
 
@@ -71,7 +132,10 @@ class Production():
     def __init__(self, terminalIdPair, lookaheadIdPair, nonterminals, captureMode):
         self.terminalIdPair  = terminalIdPair   # Terminal Set ID, Invert?
         self.lookaheadIdPair = lookaheadIdPair  # Terminal Set ID, Invert?
-        self.nonterminals    = nonterminals     # List of up to 3 NonTerminal IDs
+
+        # List of up to 3 NonTerminal IDs
+        # N.B. these are pushed onto the stack in reverse order!
+        self.nonterminals = list(reversed(nonterminals))
 
         # capture?, capture start?, capture end?, capture semantic ID
         self.captureMode = captureMode
@@ -144,6 +208,10 @@ class Shorthand():
         self.collectionType = collectionType
         self.collectionSplit = collectionSplit
 
+        # TODO ensure resuting expansion is always parseable
+        # e.g. expansion "." => "class" is good
+        # e.g. expansion "!" => 'foo="bar" foo=' is weird
+
 
 
 class Parser():
@@ -156,14 +224,14 @@ class Parser():
         the syntax of the parser with custom shorthand attributes."""
 
         # Construct a table for runtime-configurable shorthand syntax
-        # as a list of tuples (symbol, shorthand) with each symbol unique
-        self.shorthands = []
+        # as a mapping of shorthand symbol to Shorthand objects
+        self.shorthands = {}
         for x in shorthands:
-            assert not (x.symbol, x) in self.shorthands, \
+            assert not x.symbol in self.shorthands, \
                 "Duplicate shorthand symbol specified"
             assert self.atomaton.allowableShorthandSymbol(x.symbol), \
                 "Unicode code point %d disallowed for shorthand" % ord(x.symbol)
-            self.shorthands.append((x.symbol, x))
+            self.shorthands[x.symbol] = x
 
         # a string of all the shorthand symbols        
         shorthandSymbolString = reduce(lambda x, y: x + y[0], self.shorthands, "")
@@ -227,14 +295,13 @@ class Parser():
                         capture = []
                         startPos = pos.copy()
                         captureAs = production.captureAs()
-                        
                     
                     if production.capture():
                         capture.append(current)
 
                     if production.captureEnd():
                         assert startPos is not None
-                        yield (captureAs, ''.join(capture), startPos.copy(), pos.copy())
+                        yield Token(captureAs, ''.join(capture), startPos.copy(), pos.copy())
                         startPos is None
 
                     
@@ -248,21 +315,78 @@ class Parser():
                 helpCurrent = hex(ord(current))
                 helpLookahead = hex(ord(lookahead)) if lookahead is not None else 'EOF'
                 raise ParseError("Unexpected input %s, %s in state %d" % \
-                    (helpCurrent, helpLookahead, currentState), pos)
+                    (helpCurrent, helpLookahead, currentState), startPos, pos)
 
 
         # special case - e.g. allow EOF at D without trailing whitespace
         finalState = state.peek()
         if finalState is not None and finalState not in self.endStates:
-            raise ParseError("Unexpected end of file in state %d" % currentState, pos)
+            raise ParseError("Unexpected end of file in state %d" % currentState, startPos, pos)
 
 
     def parse(self, src, bufsize=bach.io.DEFAULT_BUFFER_SIZE):
         
         reader = bach.io.reader(src, bufsize)()
+        tokens = self.lex(reader)
 
-        for token in self.lex(reader):
-            print(repr(token))
+        # Initialise a stack of documents for parsing into a tree-type structure
+        # The first document opens implicitly
+        state = bach.io.stack([Document()])
+
+        # For each classified token and a single lookahead in advance
+        it = bach.io.pairwise(tokens)
+        for token, lookahead in it:
+
+            if token.semantic is CaptureSemantic.label:
+                state.peek().setLabel(token.lexeme)
+
+            elif token.semantic is CaptureSemantic.literal:
+                state.peek().addChild(token.lexeme)
+
+            elif token.semantic is CaptureSemantic.subdocStart:
+                # open a new subdocument
+                d = Document()
+                state.peek().addChild(d)
+                state.push(d)
+
+            elif token.semantic is CaptureSemantic.subdocEnd:
+                d = state.pop()
+                assert d is not None # should be already enforced by grammar
         
+            elif token.semantic is CaptureSemantic.attribute:
+
+                if lookahead and lookahead.semantic is CaptureSemantic.assign:
+                    _, _ = next(it)
+                    value, _ = next(it)
+
+                    # should be already enforced by grammar
+                    assert value.semantic is CaptureSemantic.literal
+
+                    state.peek().addAttribute(
+                        None, token.lexeme, value.lexeme, token.start, value.end)
+
+                else:
+                    # No assignment - attribute with empty value
+                    state.peek().addAttribute(
+                        None, token.lexeme, "", token.startPos, token.endPos)
+                    pass
+        
+            elif token.semantic is CaptureSemantic.shorthandSymbol:
+
+                # should already be enforced by grammar
+                assert lookahead is CaptureSemantic.shorthandAttrib
+                assert token.lexeme in parser.shorthandSymbolString
+                
+                shorthand = parser.shorthands[token.lexeme]
+                attrib, _ = next(tokens)
+
+                state.peek().addAttribute(shorthand, None, attrib.lexeme, token.start, attrib.end)
+
+            else:
+                raise BachParseError("Unexpected %s" % token.semantic, token.start, token.end)
+
+
+        # Return the root document
+        return state.peek(0)
 
 

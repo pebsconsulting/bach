@@ -28,8 +28,11 @@ parser = bach.Parser(shorthands)
 fp = io.TextIOWrapper(sys.stdin.buffer, encoding=sys.stdin.encoding)
 
 # Parse the input stream
-parser.parse(fp)
+tree = parser.parse(fp)
 
 # -- You can use a string too, e.g: parser.parse("document 'example'")
+
+
+print(repr(tree))
 
 

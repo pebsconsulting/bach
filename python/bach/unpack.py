@@ -163,8 +163,7 @@ class CompiledProduction():
 
     @staticmethod
     def ids(xs):
-        # N.B. rules are pushed onto the stack in reverse order!!!
-        for i in reversed(xs):
+        for i in xs:
             if i != 255:
                 yield i
 

@@ -54,9 +54,9 @@ class stack():
     def __init__(self, xs=[]):
         self.entries = xs
 
-    def peek(self):
+    def peek(self, index=-1):
         try:
-            return self.entries[-1]
+            return self.entries[index]
         except IndexError:
             return None
 
