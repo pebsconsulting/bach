@@ -33,6 +33,14 @@ tree = parser.parse(fp)
 # -- You can use a string too, e.g: parser.parse("document 'example'")
 
 
+# The result is a tree of bach.Documents:
+
+# document.label - str
+# document.attributes - mapping of str to a list of str values (shorthand expanded)
+# document.children - a mixed list of bach.Documents and str values
+
 print(repr(tree))
+
+# TODO document.toXML, .toETree, etc.
 
 

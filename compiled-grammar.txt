@@ -185,8 +185,8 @@
 #        (16 => ¬8, [16])
 #        if lookahead in rb (12)
 #        [capture][capture start][capture end] as attribute (2)
-#    D => ¬sc ALSD
-#        (11 => ¬8, [18])
+#    D => ¬sc ALD
+#        (11 => ¬8, [13])
 #        if lookahead in asgn (10)
 #        [capture][capture start][capture end] as attribute (2)
 #    D => asgn LD
@@ -325,12 +325,12 @@
 #        (6 => 6, [9 6])
 #        if lookahead not in special:none (0)
 #         as none (0)
-#    LSQ => bs LSQESC LDQ
-#        (5 => 6, [8 6])
+#    LSQ => bs LSQESC LSQ
+#        (5 => 6, [8 5])
 #        if lookahead not in special:none (0)
 #         as none (0)
-#    LBQ => bs LBQESC LDQ
-#        (7 => 6, [10 6])
+#    LBQ => bs LBQESC LBQ
+#        (7 => 6, [10 7])
 #        if lookahead not in special:none (0)
 #         as none (0)
 #    LDQESC => dqesc 
@@ -377,19 +377,19 @@
 #    21 sets of terminal characters defined by a mapping into 20 chars
 # Compiling...
 #    Compiled to 552 bytes
-#    Checksum: 90
+#    Checksum: 85
 # HEX output follows.
 626163682d6367311614233d20090d0a282922275b5d3c3e5c275c5b5c2215000000001414010f02
 0502060e0f05060014080b01020001070806070809090a0a0b0b0c12140e1010120007070209030c
 010d020f0312031503180119011a011b0c27042b012c022e04320c3e044201430245024701040300
 ff07000401030087000700ffff80000b04030087000b0300ff070088020bff05e1880e0bff88c104
 ffffff84000401ffff040005ffffff850005ffffff01000502ffff050007ffffff800087ffffff07
-008704ffff87000fffffff80209305ffff8080060806ff80000effffff80209206ffff8080060906
-ff800011ffffff80209407ffff8080060a06ff800013ffffff808012ffffff808014ffffff808005
-0bffff850005ffffff010005020bff050002130bff88e788020bff05e2880e0bff88c28812ffff0a
+008704ffff87000fffffff80209305ffff8080060805ff80000effffff80209206ffff8080060906
+ff800011ffffff80209407ffff8080060a07ff800013ffffff808012ffffff808014ffffff808005
+0bffff850005ffffff010005020bff050002130bff88e788020bff05e2880e0bff88c2880dffff0a
 e20a0cffff80e40d0f0bff80e50e060bff80430f050bff804310070bff8043050cffff80000e060b
 ff80430f050bff804310070bff80430a0cffff80e488ffffff08a0880effff8880050fffff800088
 0210ff05e1880e10ff88c18810ffff0ce1021410ff88e7880210ff05e2880e10ff88c28810ffff0c
 e28812ffff0ae20a11ffff80e40d0f10ff80e50cffffff80e60510ffff80000e0610ff80430f0510
 ff8043100710ff80430511ffff80000e0610ff80430f0510ff8043100710ff80430a11ffff80e488
-ffffff08e8880effff88c888ffffff08e8880effff88c80cffffff8000010b5a
+ffffff08e8880effff88c888ffffff08e8880effff88c80cffffff8000010b55

@@ -8,6 +8,7 @@ from bach.unpack import CompiledGrammar, CompiledProduction
 
 class ParseError(RuntimeError):
     def __init__(self, reason, startPos, endPos):
+        if startPos is None: startPos = Position(-1, -1)
         self.start  = startPos
         self.end    = endPos
         self.reason = reason
@@ -64,6 +65,10 @@ class Token():
         self.lexeme   = lexeme      # type str
         self.start    = start       # type Position
         self.end      = end         # type Position
+
+    def __repr__(self):
+        return "<bach.Token %s, type %s, from %s to %s>" % \
+            (repr(self.lexeme), self.semantic, self.start, self.end)
 
 
 
@@ -175,13 +180,12 @@ class Production():
             # terminal set "special:eof" is always defined with ID=1
         if (setId == 1):
             if char is None:
-                return not invert # (invert is always False in the current grammar)
+                return not invert # (invert is always False here in the current grammar)
             else:
-                return False
+                return invert
         
         if char is None:
-            # otherwise, EOF is not in the set nor its inverse
-            return False
+            return invert # ??
 
         terminalSet = parser.terminalSets[setId]
 
@@ -235,6 +239,7 @@ class Parser():
 
         # a string of all the shorthand symbols        
         shorthandSymbolString = reduce(lambda x, y: x + y[0], self.shorthands, "")
+        self.shorthandSymbolString = str(shorthandSymbolString)
 
         # a list of all sets of terminal symbols, ordered by set ID,
         # and patched with runtime-configured values
@@ -269,6 +274,9 @@ class Parser():
         # Iterate over the current character and a single lookahead - LL(1)
         for (current, lookahead) in bach.io.pairwise(reader):
 
+            print("Lexer state %s" % repr(state.peek()), " stack " + repr(state.entries))
+            print(current, lookahead)
+
             # Current is always a single Unicode character, but lookahead may be
             # None iff the end of the stream is reached
 
@@ -289,6 +297,8 @@ class Parser():
                 # See if it matches current and lookahead
                 if production.match(self, current, lookahead):
 
+                    print("Match: " + repr(production))
+
                     matchedRule = True
 
                     if production.captureStart():
@@ -302,7 +312,7 @@ class Parser():
                     if production.captureEnd():
                         assert startPos is not None
                         yield Token(captureAs, ''.join(capture), startPos.copy(), pos.copy())
-                        startPos is None
+                        startPos = None
 
                     
                     state.pop()
@@ -336,6 +346,11 @@ class Parser():
         # For each classified token and a single lookahead in advance
         it = bach.io.pairwise(tokens)
         for token, lookahead in it:
+
+            print("Token, lookahead:")
+            print(repr(token))
+            print(repr(lookahead))
+            print("---")
 
             if token.semantic is CaptureSemantic.label:
                 state.peek().setLabel(token.lexeme)
@@ -374,11 +389,11 @@ class Parser():
             elif token.semantic is CaptureSemantic.shorthandSymbol:
 
                 # should already be enforced by grammar
-                assert lookahead is CaptureSemantic.shorthandAttrib
-                assert token.lexeme in parser.shorthandSymbolString
-                
+                assert token.lexeme in self.shorthandSymbolString
+                assert lookahead and lookahead.semantic is CaptureSemantic.shorthandAttrib
+
                 shorthand = parser.shorthands[token.lexeme]
-                attrib, _ = next(tokens)
+                attrib, _ = next(it)
 
                 state.peek().addAttribute(shorthand, None, attrib.lexeme, token.start, attrib.end)
 

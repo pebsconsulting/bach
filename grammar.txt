@@ -7,28 +7,28 @@
 
 
 [Production Symbols]
-    S           # Start (always ID 0)
-    IWS         # "inline" whitespace - whitespace excluding \n
-    WS          # whitespace
-    LF          # Linefeed
-    C           # Comment
-    LSQ         # 'Single'-Quoted String Literal Remainder (excudes opening quote)
-    LDQ         # "Double"-Quoted String Literal Remainder (excudes opening quote)
-    LBQ         # [Bracket]-Quoted String Literal Remainder (excudes opening quote)
-    LSQESC      # Escape Sequence within 'Single'-Quoted String Literal Remainder
-    LDQESC      # Escape Sequence within "Double"-Quoted String Literal Remainder
-    LBQESC      # Escape Sequence within [Bracket]-Quoted String Literal Remainder
-    D           # Document (i.e. past function label and any header comments)
-    LD          # Literal followed by rest of D
-    ALD         # Attribute assignment followed by LD e.g. ="foo"
-    XSCC        # Excluding Special Characters Capture
-    SDS         # Subdocument Start (excludes opening parenthesis)
-    SD          # Subdocument (i.e. past function label)
-    LSD         # Literal followed by rest of SD
-    ALSD        # Attribute Assignment followed by LSD e.g. ="foo"
-    DSH         # Document shorthand attribute e.g. .className, #idName
-    SDSH        # Subdocument shorthand attribute
-    RB          # Right Bracket )
+    S           #  0 Start (always ID 0)
+    IWS         #  1 "inline" whitespace - whitespace excluding \n
+    WS          #  2 whitespace
+    LF          #  3 Linefeed
+    C           #  4 Comment
+    LSQ         #  5 'Single'-Quoted String Literal Remainder (excudes opening quote)
+    LDQ         #  6 "Double"-Quoted String Literal Remainder (excudes opening quote)
+    LBQ         #  7 [Bracket]-Quoted String Literal Remainder (excudes opening quote)
+    LSQESC      #  8 Escape Sequence within 'Single'-Quoted String Literal Remainder
+    LDQESC      #  9 Escape Sequence within "Double"-Quoted String Literal Remainder
+    LBQESC      # 10 Escape Sequence within [Bracket]-Quoted String Literal Remainder
+    D           # 11 Document (i.e. past function label and any header comments)
+    LD          # 12 Literal followed by rest of D
+    ALD         # 13 Attribute assignment followed by LD e.g. ="foo"
+    XSCC        # 14 Excluding Special Characters Capture
+    SDS         # 15 Subdocument Start (excludes opening parenthesis)
+    SD          # 16 Subdocument (i.e. past function label)
+    LSD         # 17 Literal followed by rest of SD
+    ALSD        # 18 Attribute Assignment followed by LSD e.g. ="foo"
+    DSH         # 19 Document shorthand attribute e.g. .className, #idName
+    SDSH        # 20 Subdocument shorthand attribute
+    RB          # 21 Right Bracket )
 
 
 [Capture Semantics]
@@ -47,7 +47,7 @@
 [Terminals]
 #                        |-duplicates with \\ escape prior
     "#= \t\r\n()\"'[]<>\\'\\[\\\""
-#    012 3 4 567 89ABCD EF GH I J index
+#    012 3 4 567 89ABCD EFG H I J index
 # At runtime, this string may grow, so allocate at least +16 characters.
 
 
@@ -155,7 +155,7 @@
 
 # Attributes - pair start / pair second half
 
-    D => ¬sc ALSD             ; lookahead in asgn;   C; CS; CE; as attribute
+    D => ¬sc ALD              ; lookahead in asgn;   C; CS; CE; as attribute
     D => asgn LD              ;                      C; CS; CE; as assign
   ALD => asgn LD              ;                      C; CS; CE; as assign
    LD => ws LD
@@ -215,8 +215,8 @@
  
 # LDQ => bs escapesequence LDQ
   LDQ  => bs LDQESC LDQ
-  LSQ  => bs LSQESC LDQ
-  LBQ  => bs LBQESC LDQ
+  LSQ  => bs LSQESC LSQ
+  LBQ  => bs LBQESC LBQ
 
 # DDQEST => escapable
 LDQESC => dqesc               ;                     C
