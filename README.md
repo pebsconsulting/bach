@@ -30,15 +30,14 @@ first item in a list is required to be atomic", and more.
 
 A special "shorthand" syntax can expand attributes like `.myClass` into
 `class="myClass"`. The shorthand syntax is fully configurable at parse-time,
-including (soon) customisable encoding of lists and sets e.g. how to combine
+including customisable encoding of lists and sets e.g. how to combine
 multiple CSS classes into one attribute.
 
 
 ### Efficient portable parser
 
 Bach documents are parseable in linear time to the length of the input and one
-byte of lookahead i.e. with an LL(1) parser such as a deterministic pushdown
-automaton (DPDA).
+byte of lookahead i.e. with an LL(1) parser.
 
 The language grammar is formally defined in a machine-readable document,
 then compiled into a compact portable representation. This makes it simpler
@@ -116,10 +115,17 @@ Here's a contrived HTML4-style example:
 
 # Syntax and Semantics
 
-A Bach document is a non-empty string that may start with #-style comments,
-followed by a label, then optionally attributes, shorthand attributes, string
-literals, and subdocuments in any order. Subdocuments may not contain #-style
-comments, but may contain #-style shorthand attributes instead.
+A native Bach document is a 3-tuple of
+
+    * a label: like an XML tag name
+    * attributes: a mapping of attribute names to a list of values
+    * children: a mixed list of strings and subdocuments
+
+In terms of syntax, a Bach document is a non-empty string that may start with
+#-style comments, followed by a label, then optionally attributes, shorthand
+attributes, string literals, and subdocuments in any order. Subdocuments may
+not contain #-style comments, but may contain #-style shorthand attributes
+instead.
 
 Special characters are space, backslash, and
 
