@@ -274,8 +274,8 @@ class Parser():
         # Iterate over the current character and a single lookahead - LL(1)
         for (current, lookahead) in bach.io.pairwise(reader):
 
-            print("Lexer state %s" % repr(state.peek()), " stack " + repr(state.entries))
-            print(current, lookahead)
+            #print("Lexer state %s" % repr(state.peek()), " stack " + repr(state.entries))
+            #print(current, lookahead)
 
             # Current is always a single Unicode character, but lookahead may be
             # None iff the end of the stream is reached
@@ -297,7 +297,7 @@ class Parser():
                 # See if it matches current and lookahead
                 if production.match(self, current, lookahead):
 
-                    print("Match: " + repr(production))
+                    #print("Match: " + repr(production))
 
                     matchedRule = True
 
@@ -347,10 +347,10 @@ class Parser():
         it = bach.io.pairwise(tokens)
         for token, lookahead in it:
 
-            print("Token, lookahead:")
-            print(repr(token))
-            print(repr(lookahead))
-            print("---")
+            #print("Token, lookahead:")
+            #print(repr(token))
+            #print(repr(lookahead))
+            #print("---")
 
             if token.semantic is CaptureSemantic.label:
                 state.peek().setLabel(token.lexeme)

@@ -1,0 +1,8 @@
+# Comment
+
+document
+    attribute="value"
+
+    (subdocument attribute="value one" attribute="value two"
+        "literal one"
+        "literal two")
