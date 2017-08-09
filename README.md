@@ -117,9 +117,9 @@ Here's a contrived HTML4-style example:
 
 A native Bach document is a 3-tuple of
 
-    * a label: like an XML tag name
-    * attributes: a mapping of attribute names to a list of values
-    * children: a mixed list of strings and subdocuments
+ * a label: like an XML tag name
+ * attributes: a mapping of attribute names to a list of values
+ * children: a mixed list of strings and subdocuments
 
 In terms of syntax, a Bach document is a non-empty string that may start with
 #-style comments, followed by a label, then optionally attributes, shorthand
