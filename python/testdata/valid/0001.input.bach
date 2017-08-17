@@ -5,4 +5,5 @@ document
 
     (subdocument attribute="value one" attribute="value two"
         "literal one"
-        "literal two")
+        "literal two"
+        "literal with some £¹²³ unicode")

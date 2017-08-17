@@ -1,5 +1,6 @@
 import io
 import bach.io
+import bach.translate
 import enum
 
 from functools import reduce
@@ -78,6 +79,11 @@ class Document():
         self.label = None    # A str
         self.attributes = {} # A dict of names to a list of values non-None str
         self.children   = [] # A list of Document or str children
+
+
+    def toElementTree(self, etreeClass):
+        # e.g. from lxml import etree as ET; document.toElementTree(ET)
+        return bach.translate.toElementTree(etreeClass, self)
 
 
     def setLabel(self, label):

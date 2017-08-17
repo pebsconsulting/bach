@@ -28,7 +28,7 @@ parser = bach.Parser(shorthands)
 fp = io.TextIOWrapper(sys.stdin.buffer, encoding=sys.stdin.encoding)
 
 # Parse the input stream
-tree = parser.parse(fp)
+document = parser.parse(fp)
 
 # -- You can use a string too, e.g: parser.parse("document 'example'")
 
@@ -39,8 +39,24 @@ tree = parser.parse(fp)
 # document.attributes - mapping of str to a list of str values (shorthand expanded)
 # document.children - a mixed list of bach.Documents and str values
 
-print(repr(tree))
+print("\nAs Python Literals:")
+print(repr(document))
 
-# TODO document.toXML, .toETree, etc.
+
+
+# We can convert it into an LXML ElementTree
+
+from lxml import etree as ET
+
+tree = document.toElementTree(ET)
+
+
+# Which we can convert into XML...
+
+xml = ET.tostring(tree, encoding=sys.stdin.encoding, pretty_print=True, xml_declaration=True).decode('utf-8')
+
+print("\nAs XML:")
+print(xml)
+
 
 
