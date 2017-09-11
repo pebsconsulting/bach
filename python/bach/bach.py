@@ -176,12 +176,12 @@ class Production():
             # terminal set "special:eof" is always defined with ID=1
         if (setId == 1):
             if char is None:
-                return not invert # (invert is always False here in the current grammar)
+                return not invert # invert is always False here in the current grammar
             else:
                 return invert
         
         if char is None:
-            return invert # ??
+            return False # if EOF, its neither "in" nor "in the invert of" a character set
 
         terminalSet = parser.terminalSets[setId]
 
@@ -303,13 +303,19 @@ class Parser():
                     for nt in production.nonterminals:
                         state.push(nt)
 
-                    #
+                    # Check that our grammar isn't ambiguous!
                     for production2 in self.states[currentState]:
                         if production == production2: continue
-                        if production.match(self, current, lookahead):
-                            print("Warning: ambiguous production in state %d: %d or %d" % \
-                                (currentState, self.states[currentState].index(production), self.states[currentState].index(production2)))
+                        if production2.match(self, current, lookahead):
+                            print("Warning: ambiguous production in state %d:\n| (%d) %s\n| (%d) %s" % \
+                                (currentState,
+                                self.states[currentState].index(production),
+                                production,
+                                self.states[currentState].index(production2),
+                                production2)
+                            )
 
+                    # In case it is ambiguous, use the first rule
                     break
 
 
