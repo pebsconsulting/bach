@@ -9,6 +9,11 @@ Example configuring shorthand attribute expansion:
     cat input.bach | python3 bach2xml.py -s ".class" "#id" "?flag" > output.xml
     cat input.bach | python3 bach2xml.py --shorthand ".class" "#id" "?flag" > output.xml
 
+E.g.
+    echo "document .className" | python3 bach2xml.py -s ".class"
+    >>>> <?xml version='1.0' encoding='utf-8'?>
+    >>>> <document class="className"/>
+
 Example configuring input and output encodings (either are optional; defaults to utf-8)
     cat input.bach | python3 bach2xml.py -i "Latin-1" -o "utf-8" > output.xml
     cat input.bach | python3 bach2xml.py --input-encoding "Latin-1" --output-encoding "utf-8" > output.xml
