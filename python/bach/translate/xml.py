@@ -15,7 +15,10 @@ def toElementTree(etreeClass, bachDocument, parent=None):
     for i in values:
         if type(i) is str:
             if lastElement == e:
-                lastElement.text = i
+                if lastElement.text:
+                    lastElement.text += i
+                else:
+                    lastElement.text = i
             else:
                 lastElement.tail = i
         else:
