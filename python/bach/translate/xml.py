@@ -9,7 +9,7 @@ def toElementTree(etreeClass, bachDocument, parent=None):
         e = etreeClass.Element(label)
     
     for k,v in attributes.items():
-        e.set(k, ' '.join(v))
+        e.set(k, v)
 
     lastElement = e
     for i in values:

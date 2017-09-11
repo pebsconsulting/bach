@@ -72,7 +72,10 @@
     ws          5  2 6 # " \t\r\n"   # whitespace
     bs          6  E F # "\\"        # backslash
     lf          7  5 6 # "\n"       # UNIX linefeed ("\n")
+
+    # ID always 8
     sc          8  0 K # "#=\t\r\n ()[]<>\"'\\" # special characters (plus shorthand separators at runtime)
+
     oqt         9  8 B # "\"['"      # opening quoted literal e.g. ", [, '
     asgn        A  1 2 # "="         # assignment characters e.g. "="
     scmt        B  0 1 # "#"         # single-line comments at start of document only

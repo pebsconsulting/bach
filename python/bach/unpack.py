@@ -13,6 +13,7 @@ class CompiledGrammar():
     TERMINAL_SET_EOF_ID  = 1 # end of file
     TERMINAL_SET_SS_ID   = 2 # runtime shorthand separators
     TERMINAL_SET_DSS_ID  = 3 # disallowed shorthand separators
+    TERMINAL_SET_SC_ID   = 8 # special characters
 
     packed = """
 626163682d6367311614233d20090d0a282922275b5d3c3e5c275c5b5c2215000000001414010f02
@@ -79,7 +80,10 @@ ffffff08e8880effff88c888ffffff08e8880effff88c80cffffff8000010b55
             else:
                 start = self.data[index]
                 end   = self.data[index+1]
-                yield self.terminalString[start:end]
+                result = self.terminalString[start:end]
+                if i == self.TERMINAL_SET_SC_ID:
+                    result = ''.join(set(result + shorthandSeparators))
+                yield result
             index += 2
 
 
