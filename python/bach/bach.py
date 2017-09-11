@@ -122,8 +122,8 @@ class Document():
 
 
     def __repr__(self):
-        return "<bach.Document: %s %s %s>" % \
-            (self.label, self.attributes, self.children)
+        return "<bach.Document: .label=%s .attributes=%s .children=%s>" % \
+            (repr(self.label), self.attributes, self.children)
 
 
 
