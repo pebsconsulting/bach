@@ -115,7 +115,6 @@ class Document():
     def attributes(self):
         if self._attributes is None:
             self._attributes = {}
-            print(repr(self.splitAttributes))
             for key, values in self.splitAttributes.items():
                 self._attributes[key] = ' '.join(values)
 
@@ -304,6 +303,7 @@ class Parser():
                         state.push(nt)
 
                     # Check that our grammar isn't ambiguous!
+                    """
                     for production2 in self.states[currentState]:
                         if production == production2: continue
                         if production2.match(self, current, lookahead):
@@ -314,6 +314,7 @@ class Parser():
                                 self.states[currentState].index(production2),
                                 production2)
                             )
+                    """
 
                     # In case it is ambiguous, use the first rule
                     break
