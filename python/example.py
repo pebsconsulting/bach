@@ -28,7 +28,6 @@ document = parser.parse(fp)
 # document.label - str
 # document.attributes - mapping of str attribute names to str attribute values;
 #                       shorthand attributes are expanded to their full names
-#                       and duplicate attributes are combined with spaces.
 # document.children - a mixed list of bach.Documents and/or str values
 
 print("\nAs Python Literals:")

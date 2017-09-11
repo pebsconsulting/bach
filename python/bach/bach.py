@@ -61,15 +61,16 @@ class Position():
 
 class Token():
 
-    def __init__(self, semantic, lexeme, start, end):
+    def __init__(self, semantic, lexeme, start, end, state=None):
         self.semantic = semantic    # type CaptureSemantic
         self.lexeme   = lexeme      # type str
         self.start    = start       # type Position
         self.end      = end         # type Position
+        self.state    = state       # type Number; for debugging
 
     def __repr__(self):
-        return "<bach.Token %s, type %s, from %s to %s>" % \
-            (repr(self.lexeme), self.semantic, self.start, self.end)
+        return "<bach.Token %s, type %s, from %s to %s (from state %d)>" % \
+            (repr(self.lexeme), self.semantic, self.start, self.end, self.state)
 
 
 
@@ -78,7 +79,7 @@ class Document():
     def __init__(self):
         self.label = None    # A str
         self.splitAttributes = {} # A dict of attribute names to a list of non-None str values
-        self._attributes = None # A dict of attribute names to non-None str values, duplicates separated by space
+        self._attributes = None # A dict of attribute names to non-None str values, sequences merged with space character
         self.children   = [] # A list of Document or str children
 
 
@@ -98,25 +99,23 @@ class Document():
 
     def addAttribute(self, shorthand, attributeName, attributeValue, startPos, endPos):
         assert isinstance(attributeValue, str)
+        value = attributeValue.strip()
 
         if shorthand:
             assert not attributeName
             attributeName = shorthand
 
         if attributeName not in self.splitAttributes:
-            self.splitAttributes[attributeName] = []
-
-        for i in attributeValue.split(' '):
-            i = i.strip()
-            if not i: continue
-            self.splitAttributes[attributeName].append(i)
+            self.splitAttributes[attributeName] = [value]
+        else:
+            self.splitAttributes[attributeName].append(value)
 
 
     @property
     def attributes(self):
         if self._attributes is None:
-
             self._attributes = {}
+            print(repr(self.splitAttributes))
             for key, values in self.splitAttributes.items():
                 self._attributes[key] = ' '.join(values)
 
@@ -295,7 +294,7 @@ class Parser():
 
                     if production.captureEnd():
                         assert startPos is not None
-                        yield Token(captureAs, ''.join(capture), startPos.copy(), pos.copy())
+                        yield Token(captureAs, ''.join(capture), startPos.copy(), pos.copy(), currentState)
                         startPos = None
 
                     
@@ -303,6 +302,15 @@ class Parser():
                     
                     for nt in production.nonterminals:
                         state.push(nt)
+
+                    #
+                    for production2 in self.states[currentState]:
+                        if production == production2: continue
+                        if production.match(self, current, lookahead):
+                            print("Warning: ambiguous production in state %d: %d or %d" % \
+                                (currentState, self.states[currentState].index(production), self.states[currentState].index(production2)))
+
+                    break
 
 
             if not matchedRule:
@@ -367,16 +375,17 @@ class Parser():
                 else:
                     # No assignment - attribute with empty value
                     state.peek().addAttribute(
-                        None, token.lexeme, "", token.startPos, token.endPos)
+                        None, token.lexeme, "", token.start, token.end)
                     pass
         
             elif token.semantic is CaptureSemantic.shorthandSymbol:
 
                 # should already be enforced by grammar
                 assert token.lexeme in self.shorthandSymbolString
-                assert lookahead and lookahead.semantic is CaptureSemantic.shorthandAttrib
+                assert lookahead and lookahead.semantic is CaptureSemantic.shorthandAttrib, \
+                    "%s: lookahead (%s) is an unexpected %s" % (token.lexeme, lookahead.lexeme, str(lookahead.semantic))
 
-                shorthand = parser.shorthands[token.lexeme]
+                shorthand = self.shorthands[token.lexeme]
                 attrib, _ = next(it)
 
                 state.peek().addAttribute(shorthand, None, attrib.lexeme, token.start, attrib.end)
