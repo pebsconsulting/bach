@@ -16,11 +16,14 @@ def toElementTree(etreeClass, bachDocument, parent=None):
         if type(i) is str:
             if lastElement == e:
                 if lastElement.text:
-                    lastElement.text += i
+                    lastElement.text += ' ' + i
                 else:
                     lastElement.text = i
             else:
-                lastElement.tail = i
+                if lastElement.tail:
+                    lastElement.tail += ' ' + i
+                else:
+                    lastElement.tail = i
         else:
             e2 = toElementTree(etreeClass, i, e)
             lastElement = e2
