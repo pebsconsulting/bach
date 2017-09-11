@@ -1,1 +1,1 @@
-from .bach import Shorthand, Parser, ParseError
+from .bach import Parser, ParseError

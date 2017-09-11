@@ -200,6 +200,19 @@ tribute to the work of computer scientist
 [Sheila Greibach](https://en.wikipedia.org/wiki/Sheila_Greibach).
 
 
+## Important Security Considerations
+
+While Bach itself is not vulnerable to
+many common attacks on XML, such as exponential entity expansion (e.g. the
+"Billion laughs" attack), it is possible that a Bach document *translated to
+XML* may become a threat to an XML parser.
+
+This reference implementation does not impose a limit on the length or
+complexity of a parsed Bach document. It is possible to create a Denial
+of Service (DoS) attack, or consume excessive processing time, if a server
+does not limit the rate of access to a Bach parser.
+
+
 ## License
 
 This license applies to the Bach Reference Implementation(s) and associated

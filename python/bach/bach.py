@@ -77,7 +77,8 @@ class Document():
 
     def __init__(self):
         self.label = None    # A str
-        self.attributes = {} # A dict of names to a list of values non-None str
+        self.splitAttributes = {} # A dict of attribute names to a list of non-None str values
+        self._attributes = None # A dict of attribute names to non-None str values, duplicates separated by space
         self.children   = [] # A list of Document or str children
 
 
@@ -96,40 +97,30 @@ class Document():
 
 
     def addAttribute(self, shorthand, attributeName, attributeValue, startPos, endPos):
-
         assert isinstance(attributeValue, str)
 
         if shorthand:
-            attributeName = shorthand.expansion
+            assert not attributeName
+            attributeName = shorthand
 
-        if attributeName not in self.attributes:
-            self.attributes[attributeName] = []
-        
-        if shorthand:
+        if attributeName not in self.splitAttributes:
+            self.splitAttributes[attributeName] = []
 
-            # Values can occur multiple times in a list
-            if shorthand.collectionType is list:
-                pass # OK!
-
-            # Values can occur only once in a set
-            elif shorthand.collectionType is set:
-                if attributeValue in self.attributes[attributeName]:
-                    return # already in set, skip to success
-
-            # Only one value is permitted for this attribute
-            elif shorthand.collectionType is None:
-                if len(self.attributes[attributeName]):
-                    raise BachParseError(
-                        "Multiple values not allowed for this shorthand attribute",
-                        startPos, endPos)
-            
-            else:
-                # should never happen
-                raise TypeError("Unknown shorthand.collectionType")
+        for i in attributeValue.split(' '):
+            i = i.strip()
+            if not i: continue
+            self.splitAttributes[attributeName].append(i)
 
 
-        self.attributes[attributeName].append(attributeValue)
-        return True
+    @property
+    def attributes(self):
+        if self._attributes is None:
+
+            self._attributes = {}
+            for key, values in self.splitAttributes.items():
+                self._attributes[key] = ' '.join(values)
+
+        return self._attributes
 
 
     def __repr__(self):
@@ -207,52 +198,39 @@ class Production():
             self.matchTerminalPair(parser, self.lookaheadIdPair, lookahead)
 
 
-
-class Shorthand():
-
-    def __init__(self, symbol, expansion, collectionType=None, collectionSplit=" "):
-        assert len(symbol) == 1, "Symbol must be a single character"
-        assert collectionType in (list, set, None), "CollectionType must be List, Set, or None"
-        self.symbol = symbol
-        self.expansion = expansion
-        self.collectionType = collectionType
-        self.collectionSplit = collectionSplit
-
-        # TODO ensure resuting expansion is always parseable
-        # e.g. expansion "." => "class" is good
-        # e.g. expansion "!" => 'foo="bar" foo=' is weird
-
-
-
 class Parser():
     atomaton = CompiledGrammar()
 
-    def __init__(self, shorthands=[]):
+    def __init__(self, shorthands={}):
         """Configure and construct a new parser for a Bach document.
 
-        Pass a list of bach.Shorthand objects as the second parameter to extend
-        the syntax of the parser with custom shorthand attributes."""
+        Pass a dict of shorthand charater => expanded string as the second
+        parameter to extend the syntax of the parser with custom shorthand
+        attributes."""
 
         # Construct a table for runtime-configurable shorthand syntax
         # as a mapping of shorthand symbol to Shorthand objects
-        self.shorthands = {}
-        for x in shorthands:
-            assert not x.symbol in self.shorthands, \
-                "Duplicate shorthand symbol specified"
-            assert self.atomaton.allowableShorthandSymbol(x.symbol), \
-                "Unicode code point %d disallowed for shorthand" % ord(x.symbol)
-            self.shorthands[x.symbol] = x
+        self.shorthands = shorthands
+        for symbol in shorthands:
+            assert isinstance(shorthands[symbol], str)
+            assert len(shorthands[symbol]) >= 1, \
+                "Shorthand expansions may not be empty"
+            assert len(symbol) == 1, \
+                "Shorthands must be a single (Unicode) character"
+            assert self.atomaton.allowableShorthandSymbol(symbol), \
+                "Unicode code point %d disallowed for shorthand" % ord(symbol)
+            assert all(map(self.atomaton.allowableShorthandSymbol, shorthands[symbol])), \
+                "Unicode code point disallowed for shorthand expansion (of shorthand with code point %d)" % ord(symbol)
 
         # a string of all the shorthand symbols        
-        shorthandSymbolString = reduce(lambda x, y: x + y[0], self.shorthands, "")
-        self.shorthandSymbolString = str(shorthandSymbolString)
+        self.shorthandSymbolString = ''.join(shorthands)
 
         # a list of all sets of terminal symbols, ordered by set ID,
         # and patched with runtime-configured values
-        self.terminalSets = list(self.atomaton.terminalSets(shorthandSymbolString))
+        self.terminalSets = list(self.atomaton.terminalSets(self.shorthandSymbolString))
 
         # a string of all terminal symbols for quick membership tests
-        self.terminals = ''.join(set(self.atomaton.terminals() + shorthandSymbolString))
+        self.terminals = ''.join(set(self.atomaton.terminals() + self.shorthandSymbolString))
 
         # a list of all production rule lists, ordered by state ID
         self.states = list(self.atomaton.states(Production))
@@ -404,7 +382,7 @@ class Parser():
                 state.peek().addAttribute(shorthand, None, attrib.lexeme, token.start, attrib.end)
 
             else:
-                raise BachParseError("Unexpected %s" % token.semantic, token.start, token.end)
+                raise ParseError("Unexpected %s" % token.semantic, token.start, token.end)
 
 
         # Return the root document

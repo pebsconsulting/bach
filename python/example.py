@@ -7,21 +7,11 @@ import sys
 #     $ cat document | python3 ./example.py
 
 
-# HTML-style shorthands
-shorthands = [
-    # HTML classes are an ordered set, because classes shouldn't repeat
-    bach.Shorthand(".", "class", set),
+# Lets extend our language with some HTML-style shorthands
+# this lets us write ".someClass #someId" in our bach document
+shorthands = {'.': 'class', '#': 'id'}
 
-    # HTML IDs don't have a collection type, because only one can appear
-    bach.Shorthand("#", "id"),
-
-    # As a contrived example, lets invent a shorthand for flags like
-    # "$feature1 $feature2", where options can appear multiple times separated
-    # by semicolons
-    bach.Shorthand("$", "feature", list, '; '),
-]
-
-# Configure the parser to use these shorthands
+# Configure a parser using these shorthands
 parser = bach.Parser(shorthands)
 
 #  Get stdin as a unicode stream
@@ -36,8 +26,10 @@ document = parser.parse(fp)
 # The result is a tree of bach.Documents:
 
 # document.label - str
-# document.attributes - mapping of str to a list of str values (shorthand expanded)
-# document.children - a mixed list of bach.Documents and str values
+# document.attributes - mapping of str attribute names to str attribute values;
+#                       shorthand attributes are expanded to their full names
+#                       and duplicate attributes are combined with spaces.
+# document.children - a mixed list of bach.Documents and/or str values
 
 print("\nAs Python Literals:")
 print(repr(document))
