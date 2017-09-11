@@ -29,9 +29,7 @@ first item in a list is required to be atomic", and more.
 ### Shorthand attribute syntax configurable at parse-time
 
 A special "shorthand" syntax can expand attributes like `.myClass` into
-`class="myClass"`. The shorthand syntax is fully configurable at parse-time,
-including customisable encoding of lists and sets e.g. how to combine
-multiple CSS classes into one attribute.
+`class="myClass"`. The shorthand syntax is fully configurable at parse-time.
 
 
 ### Efficient portable parser
@@ -118,7 +116,7 @@ Here's a contrived HTML4-style example:
 A native Bach document is a 3-tuple of
 
  * a label: like an XML tag name
- * attributes: a mapping of attribute names to a list of values
+ * attributes: a mapping of attribute names to string values
  * children: a mixed list of strings and subdocuments
 
 In terms of syntax, a Bach document is a non-empty string that may start with
