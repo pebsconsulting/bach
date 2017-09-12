@@ -14,7 +14,8 @@ shorthands = {'.': 'class', '#': 'id'}
 # Configure a parser using these shorthands
 parser = bach.Parser(shorthands)
 
-#  Get stdin as a unicode stream
+# Get stdin as a unicode stream
+# (note -- if your console is always unicode, you can just simply do fp = sys.stdin)
 fp = io.TextIOWrapper(sys.stdin.buffer, encoding=sys.stdin.encoding)
 
 # Parse the input stream
