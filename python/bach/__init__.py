@@ -1,1 +1,1 @@
-from .bach import Parser, ParseError
+from .bach import Parser, ParseError, Document

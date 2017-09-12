@@ -7,6 +7,7 @@ documentation.
 
     Copyright © 2017 Ben Golightly <ben@tawesoft.co.uk>
     Copyright © 2017 Tawesoft Ltd <opensource@tawesoft.co.uk>
+    Copyright © 2017 contributors; see CONTRIBUTORS.md
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
