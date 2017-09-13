@@ -10,7 +10,7 @@ of first name or nickname, and their organisation if contributing in an
 official capacity.
 
 
-* [AdrianKoshka](https://github.com/AdrianKoshka)
+* [Adrian Lucrèce Céleste](https://github.com/AdrianKoshka), [AlcDocs](https://github.com/AlcDocs)
 * Ben Golightly, [Tawesoft Ltd](https://www.tawesoft.co.uk/)
 
 
