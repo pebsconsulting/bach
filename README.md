@@ -46,26 +46,23 @@ and quicker to write a Bach parser in your chosen language.
 
 Here is a basic example without XML namespaces.
 
-    people
-        author="Anne Editor"
-    
-    (person
-        (name
-            (forename       "Grace")
-            (surname        "Hopper")
-            (other-names    "Brewster Murray")
-            (nicknames      (nickname "Amazing Grace"))
-            (aliases)
-        )
-        (dob        "19061209")
-        (summary
-            "Grace Brewster Murray Hopper was an American"
-            (wiki "computer scientist")
-            "and United States Navy rear admiral."
+    posts
 
-            src="https://en.wikipedia.org/wiki/Grace_Hopper"
+        (post
+            (title "Hello again")
+            (content "Hello, this is my second post. Meow")
+            #update #things #cats
         )
-    )
+
+        (post
+            (title "Hello world")
+            (content (
+                (p "Hello, my website is"
+                    (a href="http://www.example.org/" "Example Website"))
+                (img src="./example.png" "Example Image")
+            )
+            #personal #off-topic #wtf
+        )
 
 
 Here's an example with XML namespaces:
