@@ -44,7 +44,8 @@ and quicker to write a Bach parser in your chosen language.
 
 ## Examples
 
-Here is a basic example without XML namespaces.
+Here is a basic example without XML namespaces, configured so that `#foo #bar`
+is expanded into `tags="foo bar"`.
 
     posts
 
