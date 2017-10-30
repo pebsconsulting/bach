@@ -57,11 +57,11 @@ is expanded into `tags="foo bar"`.
 
         (post
             (title "Hello world")
-            (content (
+            (content
                 (p "Hello, my website is"
                     (a href="http://www.example.org/" "Example Website"))
                 (img src="./example.png" "Example Image")
-            ))
+            )
             #personal #off-topic #wtf
         )
 
