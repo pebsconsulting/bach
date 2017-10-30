@@ -61,7 +61,7 @@ is expanded into `tags="foo bar"`.
                 (p "Hello, my website is"
                     (a href="http://www.example.org/" "Example Website"))
                 (img src="./example.png" "Example Image")
-            )
+            ))
             #personal #off-topic #wtf
         )
 
